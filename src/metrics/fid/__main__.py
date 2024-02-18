@@ -92,6 +92,7 @@ def main():
     m, s = fid.calculate_activation_statistics_dataloader(
         dataloader, get_feature_map_fn, dims=dims, device=device)
 
+    os.makedirs(os.path.join(args.dataroot, 'fid-stats'), exist_ok=True)
     with open(os.path.join(args.dataroot, 'fid-stats', '{}.npz'.format(name)), 'wb') as f:
         np.savez(f, mu=m, sigma=s)
 
