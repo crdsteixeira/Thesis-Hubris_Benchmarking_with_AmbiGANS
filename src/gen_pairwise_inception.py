@@ -2,7 +2,9 @@ import itertools
 import subprocess
 import os
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
+from dotenv import load_dotenv
 
+load_dotenv()
 parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
 parser.add_argument('--data', dest='dataroot',
                     default=f"{os.environ['FILESDIR']}/data", help='Dir with dataset')
@@ -10,7 +12,7 @@ parser.add_argument('--dataset', dest='dataset',
                     default='mnist', help='Dataset (mnist or fashion-mnist or cifar10)')
 parser.add_argument('--n-classes', dest='n_classes',
                     default=10, help='Number of classes in dataset')
-parser.add_argument('--device', type=str, default='0',
+parser.add_argument('--device', type=str, default='cuda:0',
                     help='Device to use. Like cuda, cuda:0 or cpu')
 
 
