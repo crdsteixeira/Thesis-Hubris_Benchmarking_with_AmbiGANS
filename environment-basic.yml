@@ -1,0 +1,22 @@
+name: gasten
+channels:
+  - nvidia
+  - pytorch
+  - anaconda
+  - conda-forge
+dependencies:
+  - matplotlib==3.8.2
+  - numpy==1.24.3
+  - pandas==2.0.3
+  - python-dotenv==1.0.1
+  - PyYAML==6.0.1
+  - schema==0.7.5
+  - scikit-learn
+  - scipy==1.11.3
+  - seaborn==0.13.2
+  - pytorch
+  - torchvision
+  - tqdm==4.65.0
+  - wandb==0.16.3
+  - pip:
+    - Pillow
