@@ -53,9 +53,9 @@ train:
     batch-size: 64
     disc-iters: 1
     classifier:
-      - models/mnist.5v3/cnn-1-1.72404
-      - models/mnist.5v3/cnn-2-1.86706
-      - models/mnist.5v3/cnn-4-1.92101
+      - models/mnist.5v3/cnn-1-1.8014
+      - models/mnist.5v3/cnn-2-1.2577
+      - models/mnist.5v3/cnn-4-1.74391
     weight:
       - 0
       - mgda
