@@ -83,6 +83,7 @@ def read_config(path):
         for rel_path in ['out-dir', 'data-dir', 'fid-stats-path', 'test-noise'] :
             config[rel_path] = os.environ['FILESDIR'] + '/' + config[rel_path]
         config['train']['step-2']['classifier'] = [(os.environ['FILESDIR'] + '/' + rel_path) for rel_path in config['train']['step-2']['classifier']]
+        os.makedirs(config['out-dir'], exist_ok=True)
     try:
         config_schema.validate(config)
     except SchemaError as se:
