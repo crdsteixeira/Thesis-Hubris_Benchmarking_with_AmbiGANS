@@ -1,5 +1,6 @@
 from .simple_cnn import Classifier as SimpleCNN
 from .my_mlp import Classifier as MyMLP
+from .pretrained import Ensemble as Ensemble
 from .classifier_cache import ClassifierCache
 
 
@@ -9,6 +10,8 @@ def construct_classifier(params, device=None):
                       params['n_classes'])
     elif params['type'] == 'mlp':
         C = MyMLP(params['img_size'], params['n_classes'], params['nf'])
+    elif params['type'] == 'ensemble':
+        C = Ensemble(params['img_size'], params['n_classes'], params['nf'], device=device)
     else:
         exit(-1)
 

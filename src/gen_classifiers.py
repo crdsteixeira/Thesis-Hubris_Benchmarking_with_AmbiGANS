@@ -30,7 +30,7 @@ parser.add_argument('--neg', dest='neg_class', default=4,
 parser.add_argument('--epochs', type=str, default="3",
                     help='List of number of epochs to train for')
 parser.add_argument('--classifier-type', dest='clf_type',
-                    type=str, help='list with elements "cnn" or "mlp"', default='cnn')
+                    type=str, help='list with elements "cnn" or "mlp" or "ensemble"', default='cnn')
 parser.add_argument('--nf', type=str, default="2,4,8,16",
                     help='List of possible num features')
 
