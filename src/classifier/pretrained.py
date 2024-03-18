@@ -28,14 +28,36 @@ class ClassifierVIT(nn.Module):
         images = torch.stack([self.transforms(i).to(self.device) for i in x])
         return self.model(images)['logits']
 
+class ClassifierResnet(nn.Module):
+    def __init__(self, img_size, num_classes, nf, device):
+        super(ClassifierResnet, self).__init__()
+        num_channels = img_size[0]
+        out_features = 1 if num_classes == 2 else num_classes
+        self.device = device
+        self.model = AutoModelForImageClassification.from_pretrained("fxmarty/resnet-tiny-mnist")
+
+        for p in self.model.parameters():
+            p.requires_grad = False
+
+        self.model.classifier = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(in_features=self.model.config.hidden_sizes[-1], out_features=out_features),
+        )
+        self.model.num_labels = out_features
+
+    def forward(self, x, output_feature_maps=False):
+        return self.model(x)['logits']
+
 class Ensemble(nn.Module):
     def __init__(self, img_size, num_classes, nf, device):
         super(Ensemble, self).__init__()
         num_channels = img_size[0]
         self.device = device
         self.model_1 = ClassifierVIT(img_size, num_classes, nf, self.device)
+        self.model_2 = ClassifierResnet(img_size, num_classes, nf, self.device)
         self.models = [
             self.model_1,
+            self.model_2,
         ]
         # TO DISCUSS
         self.predictor = nn.Sequential(
@@ -48,7 +70,7 @@ class Ensemble(nn.Module):
         output = torch.Tensor().to(self.device)
         feat_maps = []
         for m in self.models:
-            out = m(x, output_feature_maps)
+            out = m(x.clone(), output_feature_maps)
             output = torch.cat((output, out), dim=1)
 
         feat_maps.append(output)
