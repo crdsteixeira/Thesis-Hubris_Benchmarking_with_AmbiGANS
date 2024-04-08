@@ -10,7 +10,7 @@ import wandb
 from src.metrics import fid, LossSecondTerm
 from src.datasets import load_dataset
 from src.gan.train import train
-from src.gan.update_g import UpdateGeneratorGAN, UpdateGeneratorGASTEN, UpdateGeneratorGASTEN_MGDA
+from src.gan.update_g import UpdateGeneratorGAN, UpdateGeneratorGASTEN, UpdateGeneratorGASTEN_MGDA, UpdateGeneratorGASTEN_gaussian
 from src.metrics.c_output_hist import OutputsHistogram
 from src.utils import load_z, set_seed, setup_reprod, create_checkpoint_path, gen_seed, seed_worker
 from src.utils.plot import plot_metrics
@@ -58,7 +58,11 @@ def train_modified_gan(config, dataset, cp_dir, gan_path, test_noise,
     g_optim, d_optim = construct_optimizers(config["optimizer"], G, D)
 
     if num_classes == 2:
-        if weight == "mgda":
+        if isinstance(weight, dict) and "gaussian" in weight:
+            alpha = weight["gaussian"]["alpha"]
+            var = weight["gaussian"]["var"]
+            g_updater = UpdateGeneratorGASTEN_gaussian(g_crit, C, alpha=alpha, var=var)
+        elif weight == "mgda":
             g_updater = UpdateGeneratorGASTEN_MGDA(g_crit, C, normalize=False)
         elif weight == "mgda:norm":
             g_updater = UpdateGeneratorGASTEN_MGDA(g_crit, C, normalize=True)
@@ -322,6 +326,9 @@ def main():
                                                       test_noise, fid_metrics, c_out_hist,
                                                       C, C_name, C_params, C_stats, C_args,
                                                       weight, fixed_noise, num_classes, device, mod_gan_seed, run_id, epoch)
+
+                    if isinstance(weight, dict):
+                        weight = '_'.join([f'{key}_{value}' for key, value in weight.items()])
 
                     step2_metrics.append(pd.DataFrame(
                         {'fid': eval_metrics.stats['fid'],
