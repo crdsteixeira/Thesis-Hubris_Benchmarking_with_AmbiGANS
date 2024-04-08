@@ -137,6 +137,7 @@ dmypy.json
 # Data
 data/
 out/
+files/
 
 # Env variables
 .env
