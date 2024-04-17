@@ -155,7 +155,7 @@ def parse_args():
                         type=int, default=3, help='Early stopping criteria')
     parser.add_argument('--lr', type=float, default=5e-4,
                         help='ADAM opt learning rate')
-    parser.add_argument('--nf', type=int, default=2, help='Num features')
+    parser.add_argument('--nf', type=str, default=2, help='Num features')
     parser.add_argument('--seed', default=None, type=int, help='Seed')
     parser.add_argument('--device', default='cuda:0',
                         help='Device to run experiments (cpu, cuda:0, cuda:1, ...')
@@ -172,6 +172,8 @@ def main():
     setup_reprod(seed)
     args.seed = seed
     print(" > Seed", args.seed)
+
+    args.nf = eval(args.nf)
 
     device = torch.device("cpu" if args.device is None else args.device)
     print(" > Using device", device)
