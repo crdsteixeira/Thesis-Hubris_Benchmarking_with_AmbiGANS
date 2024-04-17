@@ -3,6 +3,7 @@ import subprocess
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 import os
 from dotenv import load_dotenv
+from utils import begin_classifier, begin_ensemble
 
 
 load_dotenv()
@@ -30,10 +31,10 @@ parser.add_argument('--neg', dest='neg_class', default=4,
 parser.add_argument('--epochs', type=str, default="3",
                     help='List of number of epochs to train for')
 parser.add_argument('--classifier-type', dest='clf_type',
-                    type=str, help='list with elements "cnn" or "mlp"', default='cnn')
+                    type=str, help='list with elements "cnn", "mlp", "ensemble:pretrained" or "ensemble:cnn"', default='cnn')
 parser.add_argument('--nf', type=str, default="2,4,8,16",
                     help='List of possible num features')
-
+parser.add_argument("--seed", type=int, help='random seed to use in generation', default=None)
 
 def main():
     args = parser.parse_args()
@@ -45,37 +46,19 @@ def main():
                     for e in args.epochs.split(",") if e.isdigit()]))
     l_clf_type = list(set([ct
                            for ct in args.clf_type.split(",")]))
-    l_nf = list(set([nf
-                    for nf in args.nf.split(",") if nf.isdigit()]))
     l_epochs.sort()
     l_clf_type.sort()
-    l_nf.sort()
 
     if args.pos_class is not None and args.neg_class is not None:
         iterator = iter([(str(args.neg_class), str(args.pos_class))])
     else:
         iterator = itertools.combinations(range(n_classes), 2)
 
-    for neg_class, pos_class in iterator:
-        print(f"\nGenerating classifiers for {pos_class}v{neg_class} ...")
-        for clf_type, nf, epochs in itertools.product(l_clf_type, l_nf, l_epochs):
-            print("\n", clf_type, nf, epochs)
-            proc = subprocess.run(["python", "-m", "src.classifier.train",
-                                   "--device", args.device,
-                                   "--data-dir", args.dataroot,
-                                   "--out-dir", args.out_dir,
-                                   "--dataset", args.dataset,
-                                   "--pos", pos_class,
-                                   "--neg", neg_class,
-                                   "--classifier-type", clf_type,
-                                   "--nf", nf,
-                                   "--epochs", epochs,
-                                   "--batch-size", str(args.batch_size),
-                                   "--lr", str(args.lr)],
-                                  capture_output=True)
-            for line in proc.stdout.split(b'\n')[-4:-1]:
-                print(line.decode())
-
+    for clf_type in l_clf_type:
+        if 'ensemble' in clf_type:
+            begin_ensemble(iterator, clf_type, l_epochs, args)
+        else:
+            begin_classifier(iterator, clf_type, l_epochs, args)
 
 if __name__ == '__main__':
     main()

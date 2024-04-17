@@ -27,17 +27,45 @@ FILESDIR=<file directory>
 ENTITY=<wandb entity to track experiments>
 ```
 
-### Preparation
+### GASTEN ORIGINAL
+
+#### Preparation
 
 | Step | Description                                                   | command                                                                |
 |------|---------------------------------------------------------------|------------------------------------------------------------------------|
 | 1    | create FID score for all pairs of numbers                     | `python src/gen_pairwise_inception.py`                                   |
 | 1.1  | run for one pair only (e.g. 1vs7)                             | `python -m src.metrics.fid --data data/ --dataset mnist --pos 7 --neg 1` |
 | 2    | create binary classifiers given a pair of numbers (e.g. 1vs7) | `python src/gen_classifiers.py --pos 7 --neg 1 --nf 1,2,4 --epochs 1`    |
-| 3    | create test noise                                             | `python src/gen_test_noise.py --nz 2000 --z-dim 64`                      |
+| 3    | create test noise                                             | `python src/gen_test_noise.py --nz 2048 --z-dim 64`                      |
+
+### GASTEN WITH ENSEMBLE CLASSIFIERS
+
+#### Preparation
+
+| Step | Description                                                   | command                                                                |
+|------|---------------------------------------------------------------|------------------------------------------------------------------------|
+| 1    | create FID score for all pairs of numbers                     | `python src/gen_pairwise_inception.py`                                   |
+| 1.1  | run for one pair only (e.g. 1vs7)                             | `python -m src.metrics.fid --data data/ --dataset mnist --pos 7 --neg 1` |
+| 2    | create ensemble classifiers given a pair of numbers (e.g. 1vs7) | `python src/gen_classifiers.py --classifier-type ensemble:cnn --pos 7 --neg 1 --epochs 5 --nf 50 --seed 3333`    |
+| 3    | create test noise                                             | `python src/gen_test_noise.py --nz 2048 --z-dim 64`                      |
+
+* In this example, in step 2 50 random CNNs will be created and trained during 5 epochs. Reproducibility of the CNN parameters is guaranteed by using the same random seed (--seed arg)
+
+* For running with pre-training models (RESNET and MLP): --classifier-type ensemble:pretrained. Note --nf 1 in this case.
+
+* If the user wants to specify an ensemble architecture, it can be specified in the following way (only for --classifier-type ensemble:cnn):
+
+    ```
+    --nf 4-8,8-16-32,20
+    ```
+
+    Three CNN are specified: the first with 2 layers. The first layer has 4 filters and the second 8. The second has 3 layers (8, 16 and 32 filters). Finally the last CNN has a single layer with 20 filters.
+
 
 ### GASTeN
 
 Run GASTeN to create images in the bounday between **1** and **7**.
 
 `python -m src --config experiments/mnist_7v1.yml`
+
+

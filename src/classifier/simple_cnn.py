@@ -14,40 +14,24 @@ class Classifier(nn.Module):
     def __init__(self, img_size, nf, num_classes):
         super(Classifier, self).__init__()
         nc, nh, nw = img_size
-
         self.blocks = nn.ModuleList()
-        block_1 = nn.Sequential(
-            nn.Conv2d(nc, nf, 3, padding='same'),
-        )
-        self.blocks.append(block_1)
-        block_2 = nn.Sequential(
-            nn.MaxPool2d(2),
-        )
-        self.blocks.append(block_2)
 
-        nh = pool_out(nh, 2)
-        nw = pool_out(nw, 2)
+        n_in = nc
+        for i in range(len(nf)):
+            self.blocks.append(nn.Sequential(
+                nn.Conv2d(n_in, nf[i], 3, padding='same'),
+                nn.MaxPool2d(2),
+            ))
 
-        block_3 = nn.Sequential(
-            nn.Conv2d(nf, nf*2, 3, padding='same'),
-        )
-        self.blocks.append(block_3)
-        block_4 = nn.Sequential(
-            nn.MaxPool2d(2),
-        )
-        self.blocks.append(block_4)
+            nh = pool_out(nh, 2)
+            nw = pool_out(nw, 2)
+            n_in = nf[i]
 
-        nh = pool_out(nh, 2)
-        nw = pool_out(nw, 2)
-
-        self.blocks.append(nn.Flatten())
-
-        predictor = nn.Sequential(
-            nn.Linear(nh * nw * nf * 2, 1 if num_classes ==
-                      2 else num_classes),
+        self.blocks.append(nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(nh * nw * n_in, 1 if num_classes == 2 else num_classes),
             nn.Sigmoid() if num_classes == 2 else nn.Softmax(dim=1)
-        )
-        self.blocks.append(predictor)
+        ))
 
     def forward(self, x, output_feature_maps=False):
         intermediate_outputs = []
