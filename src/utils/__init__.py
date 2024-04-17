@@ -1,10 +1,12 @@
 import os
 from datetime import datetime
+import itertools
 import random
 import torch
 import torch.nn as nn
 import numpy as np
 import math
+import subprocess
 import json
 import torchvision.utils as vutils
 from .metrics_logger import MetricsLogger
@@ -146,3 +148,76 @@ def group_images(images, classifier=None, device=None):
     img = torch.concat(grids, 2)
 
     return img
+
+def begin_classifier(iterator, clf_type, l_epochs, args):
+    l_nf = list(set([nf for nf in args.nf.split(",") if nf.isdigit()]))
+    for neg_class, pos_class in iterator:
+        print(f"\nGenerating classifiers for {pos_class}v{neg_class} ...")
+        for nf, epochs in itertools.product(l_nf, l_epochs):
+            print("\n", clf_type, nf, epochs)
+            proc = subprocess.run(["python", "-m", "src.classifier.train",
+                                   "--device", args.device,
+                                   "--data-dir", args.dataroot,
+                                   "--out-dir", args.out_dir,
+                                   "--dataset", args.dataset,
+                                   "--pos", pos_class,
+                                   "--neg", neg_class,
+                                   "--classifier-type", clf_type,
+                                   "--nf", nf,
+                                   "--epochs", epochs,
+                                   "--batch-size", str(args.batch_size),
+                                   "--lr", str(args.lr),
+                                   "--seed", str(args.seed)],
+                                  capture_output=True)
+            for line in proc.stdout.split(b'\n')[-4:-1]:
+                print(line.decode())
+
+
+def begin_ensemble(iterator, clf_type, l_epochs, args):
+    # Set seed, if necessary
+    if args.seed is not None:
+        np.random.seed(args.seed)
+    else:
+        args.seed = np.random.randint(100000)
+
+    # First get number of CNN's
+    cnn_nfs = []
+    if ',' in args.nf:
+        l_nf = list(set([nf for nf in args.nf.split(",")]))
+        for n in l_nf:
+            if '-' in n:
+                cnn = [int(c) for c in n.split('-')]
+            else:
+                cnn = [np.random.randint(1, high=n) for _ in range(np.random.randint(1, high=4+1))]
+
+            cnn_nfs.append(cnn)
+    else:
+        cnns_count = int(args.nf)
+        cnn = [[np.random.randint(1, high=32) for _ in range(np.random.randint(1, high=4+1))] for _ in range(cnns_count)]
+        cnn_nfs.extend(cnn)
+
+    print(f"\nFinal CNN list: {cnn_nfs}")
+
+    for neg_class, pos_class in iterator:
+        print(f"\nGenerating classifiers for {pos_class}v{neg_class} ...")
+        for (epochs,) in itertools.product(l_epochs):
+            print("\n", clf_type, len(cnn_nfs), epochs)
+            proc = subprocess.run(["python", "-m", "src.classifier.train",
+                                   "--device", args.device,
+                                   "--data-dir", args.dataroot,
+                                   "--out-dir", args.out_dir,
+                                   "--dataset", args.dataset,
+                                   "--pos", pos_class,
+                                   "--neg", neg_class,
+                                   "--classifier-type", clf_type,
+                                   "--nf", str(cnn_nfs),
+                                   "--name", str("{}_{}".format(clf_type.replace(':', '_'), args.seed)),
+                                   "--epochs", epochs,
+                                   "--batch-size", str(args.batch_size),
+                                   "--lr", str(args.lr),
+                                   "--seed", str(args.seed)],
+                                  capture_output=True)
+            for line in proc.stdout.split(b'\n')[-4:-1]:
+                print(line.decode())
+            for line in proc.stderr.split(b'\n'):
+                print(line.decode())
