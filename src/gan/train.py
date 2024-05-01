@@ -222,6 +222,12 @@ def train(config, dataset, device, n_epochs, batch_size, G, g_opt, g_updater, D,
         evaluate(G, fid_metrics, eval_metrics, batch_size,
                  test_noise, device, c_out_hist)
 
+        if c_out_hist is not None:
+            img = c_out_hist.plot_clfs()
+            if img is not None:
+                checkpoint_image(img, epoch, output_dir=checkpoint_dir)
+                eval_metrics.log_image('histogram', img)
+
         eval_metrics.finalize_epoch()
 
         ###
