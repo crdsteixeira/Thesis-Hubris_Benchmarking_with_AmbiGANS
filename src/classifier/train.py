@@ -63,7 +63,7 @@ def default_train_fn(C, X, Y, crit, acc_fun, early_acc=1.0):
     y_hat = C(X)
     loss = crit(y_hat, Y)
     acc = acc_fun(y_hat, Y, avg=False)
-    if early_acc > acc:
+    if early_acc > (acc / len(Y)):
         loss.backward()
 
     return loss, acc
