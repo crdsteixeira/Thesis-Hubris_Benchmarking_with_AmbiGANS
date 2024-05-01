@@ -22,6 +22,7 @@ def evaluate(C, device, dataloader, criterion, acc_fun, verbose=True, desc='Vali
     C.eval()
     running_loss = 0.0
     running_accuracy = 0.0
+    per_C_accuracy = []
 
     seq = tqdm(dataloader, desc=desc) if verbose else dataloader
 
@@ -34,11 +35,19 @@ def evaluate(C, device, dataloader, criterion, acc_fun, verbose=True, desc='Vali
         y = y.to(device)
 
         with torch.no_grad():
-            y_hat = C(X)
+            y_total = C(X, output_feature_maps=True)
+            y_hat = y_total[-1]
+            y_c_hat = y_total[0]
+
         loss = criterion(y_hat, y)
 
         running_accuracy += acc_fun(y_hat, y, avg=False)
         running_loss += loss.item() * X.shape[0]
+
+        accuracies = []
+        for j in range(y_c_hat.size(-1)):
+            accuracies.append(acc_fun(y_c_hat[:, j], y, avg=True))
+        per_C_accuracy.append(accuracies)
 
     acc = running_accuracy / len(dataloader.dataset)
     loss = running_loss / len(dataloader.dataset)
@@ -46,6 +55,8 @@ def evaluate(C, device, dataloader, criterion, acc_fun, verbose=True, desc='Vali
     if training:
         C.train()
 
+    per_C_accuracy = np.array(per_C_accuracy)
+    print("per classifier accuracy: ", np.mean(per_C_accuracy, axis=0))
     return acc.item(), loss
 
 
