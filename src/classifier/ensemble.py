@@ -87,7 +87,7 @@ class Ensemble(nn.Module):
             loss_overall += loss
             local_acc = acc_fun(y_hat, y, avg=False)
             acc += local_acc
-            if early_acc > local_acc:
+            if early_acc > (local_acc / len(y)):
                 loss.backward()
 
         return loss / len(self.models), acc / len(self.models)
@@ -103,7 +103,7 @@ class Ensemble(nn.Module):
         loss = crit(y_hat, y)
         acc = acc_fun(y_hat, y, avg=False)
 
-        if (self.output_method != "mean") and (early_acc > acc):
+        if (self.output_method != "mean") and (early_acc > (acc / len(y))):
             loss.backward()
 
         return loss, acc
