@@ -41,7 +41,12 @@ def train_modified_gan(config, dataset, cp_dir, gan_path, test_noise,
                        C, C_name, C_params, C_stats, C_args, weight, fixed_noise, num_classes, device, seed, run_id, s1_epoch):
     print("Running experiment with classifier {} and weight {} ...".format(
         C_name, weight))
-    run_name = '{}_{}_{}'.format(C_name, weight, s1_epoch)
+
+    weight_txt = weight
+    if isinstance(weight, dict) and "gaussian" in weight:
+        weight_txt = 'gauss_' + '_'.join([f'{key}_{value}' for key, value in weight['gaussian'].items()])
+
+    run_name = '{}_{}_{}'.format(C_name, weight_txt, s1_epoch)
 
     gan_cp_dir = os.path.join(cp_dir, run_name)
 
@@ -91,7 +96,7 @@ def train_modified_gan(config, dataset, cp_dir, gan_path, test_noise,
                config={
         'id': run_id,
         'seed': seed,
-        'weight': weight,
+        'weight': weight_txt,
         'train': config["train"]["step-2"],
         'classifier_loss': C_stats['test_loss'],
         'classifier': C_name,
