@@ -7,7 +7,7 @@ import pandas as pd
 import torch
 import wandb
 
-from src.metrics import fid, LossSecondTerm
+from src.metrics import fid, LossSecondTerm, Hubris
 from src.datasets import load_dataset
 from src.gan.train import train
 from src.gan.update_g import UpdateGeneratorGAN, UpdateGeneratorGASTEN, UpdateGeneratorGASTEN_MGDA, UpdateGeneratorGASTEN_gaussian
@@ -306,6 +306,7 @@ def main():
                 'fid': original_fid,
                 'focd': our_class_fid,
                 'conf_dist': conf_dist,
+                'hubris': Hubris(class_cache, test_noise.size(0)),
             }
 
             c_out_hist = OutputsHistogram(class_cache, test_noise.size(0))
