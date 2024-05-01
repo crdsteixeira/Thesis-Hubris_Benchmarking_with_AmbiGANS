@@ -215,7 +215,8 @@ def begin_ensemble(iterator, clf_type, l_epochs, args):
                                    "--epochs", epochs,
                                    "--batch-size", str(args.batch_size),
                                    "--lr", str(args.lr),
-                                   "--seed", str(args.seed)],
+                                   "--seed", str(args.seed),
+                                   "--early-acc", str(args.early_acc)],
                                   capture_output=True)
             for line in proc.stdout.split(b'\n')[-4:-1]:
                 print(line.decode())
