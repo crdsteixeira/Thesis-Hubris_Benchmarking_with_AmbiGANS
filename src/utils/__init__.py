@@ -193,7 +193,7 @@ def begin_ensemble(iterator, clf_type, l_epochs, args):
             cnn_nfs.append(cnn)
     else:
         cnns_count = int(args.nf)
-        cnn = [[np.random.randint(1, high=32) for _ in range(np.random.randint(1, high=4+1))] for _ in range(cnns_count)]
+        cnn = [[np.random.randint(1, high=5+1) for _ in range(np.random.randint(2, high=4+1))] for _ in range(cnns_count)]
         cnn_nfs.extend(cnn)
 
     print(f"\nFinal CNN list: {cnn_nfs}")
