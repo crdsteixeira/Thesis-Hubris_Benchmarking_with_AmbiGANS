@@ -179,6 +179,8 @@ def parse_args():
                         help='Number of epochs to train for')
     parser.add_argument('--early-stop', dest='early_stop',
                         type=int, default=None, help='Early stopping criteria')
+    parser.add_argument('--early-acc', dest='early_acc',
+                        type=float, default=1.0, help='Early accuracy criteria')
     parser.add_argument('--lr', type=float, default=5e-4,
                         help='ADAM opt learning rate')
     parser.add_argument('--nf', type=str, default=2, help='Num features')
