@@ -90,7 +90,7 @@ class Ensemble(nn.Module):
             if early_acc > (local_acc / len(y)):
                 loss.backward()
 
-        return loss / len(self.models), acc / len(self.models)
+        return loss_overall / len(self.models), acc / len(self.models)
 
     def optimize_helper(self, _, X, Y, crit, acc_fun, early_acc=1.00):
         chunks = list(zip(torch.tensor_split(X, len(self.models)+1), torch.tensor_split(Y, len(self.models)+1)))[0]
