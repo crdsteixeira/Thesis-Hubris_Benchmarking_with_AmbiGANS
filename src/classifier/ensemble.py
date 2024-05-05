@@ -36,7 +36,7 @@ class Ensemble(nn.Module):
             )
 
         # Output method for ensemble
-        if output_method == "super-learner":
+        if output_method == "meta-learner":
             # Multi-probability combinator.
             self.predictor = nn.Sequential(
                 nn.Linear(len(self.models), len(self.models)),
@@ -87,7 +87,7 @@ class Ensemble(nn.Module):
             loss_overall += loss
             local_acc = acc_fun(y_hat, y, avg=False)
             acc += local_acc
-            if early_acc > (local_acc / len(y)):
+            if early_acc >= (local_acc / len(y)):
                 loss.backward()
 
         return loss_overall / len(self.models), acc / len(self.models)
@@ -103,7 +103,7 @@ class Ensemble(nn.Module):
         loss = crit(y_hat, y)
         acc = acc_fun(y_hat, y, avg=False)
 
-        if (self.output_method != "mean") and (early_acc > (acc / len(y))):
+        if (self.output_method != "mean") and (early_acc >= (acc / len(y))):
             loss.backward()
 
         return loss, acc
