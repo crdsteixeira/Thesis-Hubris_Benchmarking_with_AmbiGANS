@@ -35,18 +35,29 @@ def evaluate(C, device, dataloader, criterion, acc_fun, verbose=True, desc='Vali
         y = y.to(device)
 
         with torch.no_grad():
-            y_total = C(X, output_feature_maps=True)
-            y_hat = y_total[-1]
-            y_c_hat = y_total[0]
+            accuracies = []
+            if C.m_val:
+                for m in C.models:
+                    y_hat = m(X, output_feature_maps=False)
+                    loss = criterion(y_hat, y)
+                    running_accuracy += acc_fun(y_hat, y, avg=False)
+                    running_loss += loss.item() * X.shape[0] 
+                    accuracies.append(acc_fun(y_hat, y, avg=True))
+                                           
+            else: 
+                y_total = C(X, output_feature_maps=True)
+                y_hat = y_total[-1]
+                y_c_hat = y_total[0]
 
-        loss = criterion(y_hat, y)
+                loss = criterion(y_hat, y)
 
-        running_accuracy += acc_fun(y_hat, y, avg=False)
-        running_loss += loss.item() * X.shape[0]
+                running_accuracy += acc_fun(y_hat, y, avg=False)
+                running_loss += loss.item() * X.shape[0]
 
-        accuracies = []
-        for j in range(y_c_hat.size(-1)):
-            accuracies.append(acc_fun(y_c_hat[:, j], y, avg=True))
+                
+                for j in range(y_c_hat.size(-1)):
+                    accuracies.append(acc_fun(y_c_hat[:, j], y, avg=True))
+    
         per_C_accuracy.append(accuracies)
 
     acc = running_accuracy / len(dataloader.dataset)
@@ -83,12 +94,12 @@ def train(C, opt, crit, train_loader, val_loader, test_loader, acc_fun, args, na
     C.train()
     for stage in ['train', 'optimize']:
         if stage == 'optimize':
-            if hasattr(C, 'optimize_helper'):
+            if C.optimize:
                 C_fn = C.optimize_helper
             else:
                 break
         elif stage == 'train':
-            if hasattr(C, 'train_helper'):
+            if C.train_models:
                 C_fn = C.train_helper
             else:
                 C_fn = default_train_fn
@@ -283,8 +294,11 @@ def main():
         with torch.no_grad():
             y_hat = best_C(X.to(device))
 
-        train_y_hat[i:i+y_hat.size(0)] = y_hat
-        i += y_hat.size(0)
+        if C.m_val:
+            pass
+        else:
+            train_y_hat[i:i+y_hat.size(0)] = y_hat
+            i += y_hat.size(0)
 
     test_dataloader = torch.utils.data.DataLoader(
         test_set, batch_size=args.batch_size, shuffle=False)
@@ -295,8 +309,11 @@ def main():
         with torch.no_grad():
             y_hat = best_C(X.to(device))
 
-        test_y_hat[i:i+y_hat.size(0)] = y_hat
-        i += y_hat.size(0)
+        if C.m_val:
+            pass
+        else:
+            test_y_hat[i:i+y_hat.size(0)] = y_hat
+            i += y_hat.size(0)
 
     # cp_path = checkpoint(best_C, name, model_params, stats,
     #                     args, output_dir=args.out_dir)

@@ -11,9 +11,11 @@ class Ensemble(nn.Module):
         self.ensemble_type = ensemble_type
         self.output_method = output_method
         self.device = device
+        self.m_val = False
 
         # List of ensemble models, either pretrained ones or CNN's.
         if ensemble_type == "pretrained":
+            self.train_models = False
             self.models = nn.ModuleList(
                 [
                     ClassifierResnet(img_size, num_classes, nf, self.device),
@@ -22,6 +24,7 @@ class Ensemble(nn.Module):
             )
         elif ensemble_type == "cnn":
             # Generate models' parameters
+            self.train_models = True
             self.cnn_list = nf
             self.cnn_count = len(self.cnn_list)
             # Generate models
@@ -37,7 +40,8 @@ class Ensemble(nn.Module):
 
         # Output method for ensemble
         if output_method == "meta-learner":
-            # Multi-probability combinator.
+            # Multi-probability combinator
+            self.optimize = True
             self.predictor = nn.Sequential(
                 nn.Linear(len(self.models), len(self.models)),
                 nn.ReLU(),
@@ -47,16 +51,25 @@ class Ensemble(nn.Module):
                 nn.Sigmoid(),
             )
         elif output_method == "mean":
-            # Mean combinator.
+            # Mean combinator
+            self.optimize = False
             self.predictor = nn.Sequential(
                 nn.Flatten(),
                 nn.AvgPool1d(len(self.models)),
             )
         elif output_method == "linear":
+            self.optimize = True
             # Linear combinator
             self.predictor = nn.Sequential(
                 nn.Linear(len(self.models), 1),
                 nn.Sigmoid(),
+            )
+        elif output_method == "identity":
+            self.optimize = False
+            self.m_val = True
+            # Raw outputs with no combination
+            self.predictor = nn.Sequential(
+                nn.Identity()
             )
 
     def forward(self, x, output_feature_maps=False):
@@ -82,7 +95,7 @@ class Ensemble(nn.Module):
 
         for i, chunk in enumerate(chunks):
             x, y = chunk[0], chunk[1]
-            y_hat = self.models[i](x.clone(), output_feature_maps=False)
+            y_hat = self.models[i](x, output_feature_maps=False)
             loss = crit(y_hat, y)
             loss_overall += loss
             local_acc = acc_fun(y_hat, y, avg=False)
