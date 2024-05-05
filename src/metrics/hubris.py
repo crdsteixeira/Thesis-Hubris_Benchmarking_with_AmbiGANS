@@ -23,17 +23,19 @@ class Hubris(Metric):
             self.clf_preds[i, start_idx:start_idx+batch_size] = c_all_output[0][i]
 
     def compute(self, preds):
-        reference = torch.full_like(preds, fill_value=0.50)
-        ref_preds = torch.linspace(0.0, 1.0, steps=reference.size(0))
+        ref_preds = torch.linspace(0.0, 1.0, steps=preds.size(0))
+        binary_preds = torch.hstack((preds, 1.0 - preds))
+        reference = torch.full_like(binary_preds, fill_value=0.50)
+        binary_ref_preds = torch.hstack((ref_preds, 1.0 - ref_preds))
 
-        predictions_full = torch.distributions.Categorical(probs=preds)
+        predictions_full = torch.distributions.Categorical(probs=binary_preds)
         reference_full = torch.distributions.Categorical(probs=reference)
-        ref_preds_full = torch.distributions.Categorical(probs=ref_preds)
+        ref_preds_full = torch.distributions.Categorical(probs=binary_ref_preds)
 
         ref_kl = torch.distributions.kl.kl_divergence(ref_preds_full, reference_full).mean()
         amb_kl = torch.distributions.kl.kl_divergence(predictions_full, reference_full).mean()
 
-        return torch.exp(-(amb_kl / ref_kl)).item()
+        return 1.0 - torch.exp(-(amb_kl / ref_kl)).item()
 
     def finalize(self):
         self.result = self.compute(self.preds)
