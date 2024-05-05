@@ -2,8 +2,8 @@ import torch.autograd as autograd
 from src.utils.min_norm_solvers import MinNormSolver
 import numpy as np
 from torch.nn.utils import clip_grad_norm_ 
-from torch.nn import GaussianNLLLoss
-from torch import full_like
+from torch.nn import GaussianNLLLoss, KLDivLoss
+from torch import full_like, hstack
 
 
 class UpdateGenerator:
@@ -162,6 +162,47 @@ class UpdateGeneratorGASTEN_gaussian(UpdateGenerator):
         target = full_like(input=clf_output, fill_value=self.target, device=device)
         var = full_like(input=clf_output, fill_value=self.var, device=device)
         loss_1 = self.c_loss(clf_output, target, var)
+        loss_1.backward()
+        clip_grad_norm_(G.parameters(), 0.50 * self.alpha)
+        optim.step()
+        # update from discriminator
+        optim.zero_grad()
+        fake_data = G(noise)
+        output = D(fake_data)
+        loss_2 = self.crit(device, output)
+        loss_2.backward()
+        clip_grad_norm_(G.parameters(), 0.50)
+        optim.step()
+
+        loss = loss_1 + loss_2
+
+        return loss, {'original_g_loss': loss_2.item(), 'conf_dist_loss': loss_1.item()}
+
+    def get_loss_terms(self):
+        return ['original_g_loss', 'conf_dist_loss']
+
+class UpdateGeneratorGASTEN_KLDiv(UpdateGenerator):
+    def __init__(self, crit, C, alpha):
+        super().__init__(crit)
+        self.C = C
+        self.alpha = alpha
+        self.c_loss = KLDivLoss(reduction="batchmean")
+        self.target = 0.5
+            
+    def __call__(self, G, D, optim, noise, device):
+        G.zero_grad()
+
+        optim.zero_grad()
+        fake_data = G(noise)
+        clf_output = self.C(fake_data, output_feature_maps=True)
+        # update from ensemble
+        loss_1 = 0
+        for c_pred in clf_output[0].T:
+            class_prob = hstack((c_pred, 1.0-c_pred))
+            target = full_like(input=class_prob, fill_value=self.target, device=device)
+            #var = full_like(input=c_pred, fill_value=self.var, device=device)
+            loss_1 += self.c_loss(class_prob.log(), target)
+            
         loss_1.backward()
         clip_grad_norm_(G.parameters(), 0.50 * self.alpha)
         optim.step()
