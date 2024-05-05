@@ -10,7 +10,7 @@ import wandb
 from src.metrics import fid, LossSecondTerm, Hubris
 from src.datasets import load_dataset
 from src.gan.train import train
-from src.gan.update_g import UpdateGeneratorGAN, UpdateGeneratorGASTEN, UpdateGeneratorGASTEN_MGDA, UpdateGeneratorGASTEN_gaussian
+from src.gan.update_g import UpdateGeneratorGAN, UpdateGeneratorGASTEN, UpdateGeneratorGASTEN_MGDA, UpdateGeneratorGASTEN_gaussian, UpdateGeneratorGASTEN_KLDiv
 from src.metrics.c_output_hist import OutputsHistogram
 from src.utils import load_z, set_seed, setup_reprod, create_checkpoint_path, gen_seed, seed_worker
 from src.utils.plot import plot_metrics
@@ -67,6 +67,9 @@ def train_modified_gan(config, dataset, cp_dir, gan_path, test_noise,
             alpha = weight["gaussian"]["alpha"]
             var = weight["gaussian"]["var"]
             g_updater = UpdateGeneratorGASTEN_gaussian(g_crit, C, alpha=alpha, var=var)
+        elif isinstance(weight, dict) and "kldiv" in weight:
+            alpha = weight["kldiv"]["alpha"]
+            g_updater = UpdateGeneratorGASTEN_KLDiv(g_crit, C, alpha=alpha)
         elif weight == "mgda":
             g_updater = UpdateGeneratorGASTEN_MGDA(g_crit, C, normalize=False)
         elif weight == "mgda:norm":
@@ -339,6 +342,7 @@ def main():
                     step2_metrics.append(pd.DataFrame(
                         {'fid': eval_metrics.stats['fid'],
                          'conf_dist': eval_metrics.stats['conf_dist'],
+                         'hubris': eval_metrics.stats['hubris'],
                          's1_epochs': [epoch]*len(eval_metrics.stats['fid']),
                          'weight': [weight]*len(eval_metrics.stats['fid']),
                          'epoch': [i+1 for i in range(len(eval_metrics.stats['fid']))]}))
