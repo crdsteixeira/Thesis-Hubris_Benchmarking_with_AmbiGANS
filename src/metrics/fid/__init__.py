@@ -19,6 +19,10 @@ class FID(Metric):
         self.sigma_real = sigma_real
         self.device = device
 
+    def update_shape(self, n_images):
+        self.n_images = n_images
+        self.pred_arr = np.empty((n_images, self.dims))
+    
     def update(self, images, batch):
         start_idx, batch_size = batch
 

@@ -1,5 +1,5 @@
 project: gasten_20240501
-name: mnist-9v4
+name: mnist-7v1
 out-dir: out
 data-dir: data
 test-noise: data/z/z_8192_64
@@ -8,15 +8,15 @@ fixed-noise: 8192
 device: cuda:0
 num-workers: 2
 
-fid-stats-path: data/fid-stats/stats.inception.mnist.9v4.npz
+fid-stats-path: data/fid-stats/stats.inception.mnist.7v1.npz
 
 num-runs: 1
 
 dataset:
   name: mnist
   binary:
-    pos: 9
-    neg: 4
+    pos: 7
+    neg: 1
 
 model:
   z_dim: 64
@@ -29,47 +29,30 @@ model:
   loss:
     name: ns
 
+
 optimizer:
   lr: 0.0002
   beta1: 0.5
   beta2: 0.999
 
 train:
-  step-1:
-    epochs: 10
+  step-1: 
+    epochs: 1
     checkpoint-every: 1
     disc-iters: 1
     batch-size: 64
-
+  
   step-2:
-    epochs: 40
+    epochs: 1
     checkpoint-every: 10
     step-1-epochs:
-      - 2
-      - 5
-      - 10
+      - 1
     batch-size: 64
     disc-iters: 1
     classifier:
-      - models/mnist.9v4/cnn-1-1.3333
-      - models/mnist.9v4/cnn-2-1.3333
-      - models/mnist.9v4/cnn-4-1.3333
+      - models/mnist.7v1/cnn-2-1.3333
     weight:
-      - 5
-      - 10
-      - 15
-      - 20
       - 25
-      - 30
       - gaussian:
-            alpha: 1.00
-            var: 0.05
-        - gaussian:
-            alpha: 1.02
-            var: 0.05
-        - gaussian:
-            alpha: 1.05
-            var: 0.05
-        - gaussian:
-            alpha: 1.08
-            var: 0.05
+          alpha: 1.08
+          var: 0.05

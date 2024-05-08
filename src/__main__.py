@@ -6,6 +6,7 @@ import pandas as pd
 
 import torch
 import wandb
+from wandb import AlertLevel
 
 from src.metrics import fid, LossSecondTerm
 from src.datasets import load_dataset
@@ -100,7 +101,7 @@ def train_modified_gan(config, dataset, cp_dir, gan_path, test_noise,
         'step1_epoch': s1_epoch
     })
 
-    _, _, _, eval_metrics = train(
+    _, _, train_metrics, eval_metrics = train(
         config, dataset, device, n_epochs, batch_size,
         G, g_optim, g_updater,
         D, d_optim, d_crit,
@@ -114,7 +115,7 @@ def train_modified_gan(config, dataset, cp_dir, gan_path, test_noise,
 
     wandb.finish()
 
-    return eval_metrics
+    return train_metrics, eval_metrics
 
 
 def compute_dataset_fid_stats(dset, get_feature_map_fn, dims, batch_size=64, device='cpu', num_workers=0):
@@ -126,6 +127,20 @@ def compute_dataset_fid_stats(dset, get_feature_map_fn, dims, batch_size=64, dev
 
     return m, s
 
+def compute_pareto_efficiency(data):
+    fid = data["fid"].to_numpy()
+    cd = data["conf_dist"].to_numpy()
+
+    costs = np.array([c for c in zip(fid, cd)])
+    is_efficient = np.ones(costs.shape[0], dtype=bool)
+    for i, c in enumerate(costs):
+        if is_efficient[i]:
+            is_efficient[is_efficient] = np.any(
+                costs[is_efficient] < c, axis=1)
+            is_efficient[i] = True
+    return is_efficient 
+
+import json 
 
 def main():
     load_dotenv()
@@ -174,8 +189,7 @@ def main():
 
     mu, sigma = fid.load_statistics_from_path(config['fid-stats-path'])
     fm_fn, dims = fid.get_inception_feature_map_fn(device)
-    original_fid = fid.FID(
-        fm_fn, dims, test_noise.size(0), mu, sigma, device=device)
+    original_fid = fid.FID(fm_fn, dims, test_noise.size(0), mu, sigma, device=device)
 
     num_runs = config["num-runs"]
     for i in range(num_runs):
@@ -240,7 +254,7 @@ def main():
                            'test-noise': test_noise_conf,
             })
 
-            step_1_train_state, _, _, _ = train(
+            step_1_train_state, _, step_1_train_metrics, _ = train(
                 config, dataset, device, n_epochs, batch_size,
                 G, g_optim, g_updater,
                 D, d_optim, d_crit,
@@ -271,6 +285,7 @@ def main():
         ###
         mod_gan_seed = step_2_seeds[i]
 
+        step2_metrics = []
         for c_path in classifier_paths:
             C_name = os.path.splitext(os.path.basename(c_path))[0]
             C, C_params, C_stats, C_args = construct_classifier_from_checkpoint(
@@ -281,31 +296,25 @@ def main():
 
             class_cache = ClassifierCache(C)
 
-            def get_feature_map_fn(images, batch_idx, batch_size):
-                return class_cache.get(images, batch_idx, batch_size, output_feature_maps=True)[1]
-
-            dims = get_feature_map_fn(
-                dataset.data[0:1].to(device), 0, 1).size(1)
-
-            print(" > Computing statistics using original dataset")
-            mu, sigma = compute_dataset_fid_stats(
-                dataset, get_feature_map_fn, dims, device=device, num_workers=num_workers)
-            print("   ... done")
-
-            our_class_fid = fid.FID(get_feature_map_fn, dims,
-                                    test_noise.size(0), mu, sigma, device=device)
+            #def get_feature_map_fn(images, batch_idx, batch_size):
+            #    return class_cache.get(images, batch_idx, batch_size, output_feature_maps=True)[1]
+            #dims = get_feature_map_fn(dataset.data[0:1].to(device), 0, 1).size(1)
+            #print(" > Computing statistics using original dataset")
+            #mu, sigma = compute_dataset_fid_stats(dataset, get_feature_map_fn, dims, device=device, num_workers=num_workers)
+            #print("   ... done")
+            # our_class_fid = fid.FID(get_feature_map_fn, dims, test_noise.size(0), mu, sigma, device=device)
 
             conf_dist = LossSecondTerm(class_cache)
+            boundary_fid = fid.FID(fm_fn, dims, test_noise.size(0), mu, sigma, device=device)
 
             fid_metrics = {
                 'fid': original_fid,
-                'focd': our_class_fid,
+                # 'focd': our_class_fid,
                 'conf_dist': conf_dist,
+                'boundary_fid': boundary_fid
             }
 
             c_out_hist = OutputsHistogram(class_cache, test_noise.size(0))
-
-            step2_metrics = []
 
             for s1_epoch in step_1_epochs:
                 if s1_epoch == "best":
@@ -322,24 +331,55 @@ def main():
                         f" WARNING: gan at epoch {epoch} not found. skipping ...")
 
                 for weight in weights:
-                    eval_metrics = train_modified_gan(config, dataset, cp_dir, gan_path,
+                    train_metrics, eval_metrics = train_modified_gan(config, dataset, cp_dir, gan_path,
                                                       test_noise, fid_metrics, c_out_hist,
                                                       C, C_name, C_params, C_stats, C_args,
                                                       weight, fixed_noise, num_classes, device, mod_gan_seed, run_id, epoch)
 
                     if isinstance(weight, dict):
-                        weight = '_'.join([f'{key}_{value}' for key, value in weight.items()])
+                        #weight = '_'.join([f'{key}_{value}' for key, value in weight.items()])
+                        weight_type = list(weight)[0]
+                        weight_name = json.dumps(weight[weight_type])
+                    else:
+                        weight_type = "original"
+                        weight_name = str(weight)
 
-                    step2_metrics.append(pd.DataFrame(
-                        {'fid': eval_metrics.stats['fid'],
+                    n_epochs = len(eval_metrics.stats['fid'])
+                    exp_metrics = pd.DataFrame(
+                        {'classifier': C_name,
+                         'run_id': run_id,
+                         's1_epochs': [epoch]*n_epochs,
+                         'weight_type': weight_type,
+                         'weight': [weight_name]*n_epochs,
+                         'epoch': [i+1 for i in range(n_epochs)],
+                         'fid': eval_metrics.stats['fid'],
                          'conf_dist': eval_metrics.stats['conf_dist'],
-                         's1_epochs': [epoch]*len(eval_metrics.stats['fid']),
-                         'weight': [weight]*len(eval_metrics.stats['fid']),
-                         'epoch': [i+1 for i in range(len(eval_metrics.stats['fid']))]}))
+                         'boundary_fid': eval_metrics.stats['boundary_fid'],
+                         'boundary_images': eval_metrics.stats['boundary_size'],
+                         's2_g_loss': train_metrics.stats['G_loss'],
+                         's2_d_loss': train_metrics.stats['D_loss'],
+                         's2_train_time': np.cumsum(train_metrics.stats['time']),
+                         's1_train_time': [np.cumsum(step_1_train_metrics.stats['time'])[epoch-1]]*n_epochs
+                         })
+                    exp_metrics["pareto_efficient"] = compute_pareto_efficiency(exp_metrics)
+                    step2_metrics.append(exp_metrics)
 
-            step2_metrics = pd.concat(step2_metrics)
-            plot_metrics(step2_metrics, cp_dir, f'{C_name}-{run_id}')
+        # finish run -> alert and save table
+        wandb.init(project=config["project"],
+               group=config["name"],
+               entity=os.environ['ENTITY'],
+               job_type=f'run-{i}-summary')
 
+        wandb.log({C_name: wandb.Table(dataframe=pd.concat(step2_metrics))})
+
+        for (C_name, run_id), metrics in step2_metrics.groupby(['classifier', 'run_id']):
+            plot_metrics(metrics, cp_dir, f'{C_name}-{run_id}')
+               
+        wandb.alert(
+            title="Finished Job",
+            text=f"experiments finished for {pos_class}v{neg_class}",
+            level=AlertLevel.INFO)
+        wandb.finish()
 
 if __name__ == "__main__":
     main()

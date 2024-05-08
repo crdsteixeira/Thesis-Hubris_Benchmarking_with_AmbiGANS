@@ -1,6 +1,6 @@
 import torch.nn as nn
 import torch
-from transformers import AutoImageProcessor, AutoModelForImageClassification, AutoModel
+# from transformers import AutoImageProcessor, AutoModelForImageClassification, AutoModel
 from torchvision import transforms
 
 class ClassifierVIT(nn.Module):

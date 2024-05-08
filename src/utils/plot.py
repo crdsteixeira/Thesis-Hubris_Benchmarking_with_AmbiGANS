@@ -3,6 +3,7 @@ from re import I
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+import wandb
 
 
 def plot_train_summary(data, out_path):
@@ -72,24 +73,14 @@ def plot_train_summary(data, out_path):
 
 
 def plot_metrics(data, path, C_name):
-    fid = data["fid"].to_numpy()
-    cd = data["conf_dist"].to_numpy()
+    filename = os.path.join(path, f'metrics_{C_name}.csv')
+    data.to_csv(filename)
+    print(f"> results saved in {filename}")
 
-    costs = np.array([c for c in zip(fid, cd)])
-    is_efficient = np.ones(costs.shape[0], dtype=bool)
-    for i, c in enumerate(costs):
-        if is_efficient[i]:
-            is_efficient[is_efficient] = np.any(
-                costs[is_efficient] < c, axis=1)
-            is_efficient[i] = True
-
-    size = [1.5 if pe else 1 for pe in is_efficient]
-    data["pareto_efficient"] = is_efficient
-
-    data.to_csv(os.path.join(path, f'metrics_{C_name}.csv'))
-
+    size = [1.5 if pe else 1 for pe in data["pareto_efficient"]]
     sns.scatterplot(data=data, x="fid",
                     y="conf_dist", hue="weight", style="s1_epochs", palette="deep", size=size)
     plt.savefig(os.path.join(path, f'metrics_{C_name}.svg'))
+    wandb.log({f"metrics_{C_name}": wandb.Image(plt)})
 
     plt.close()

@@ -5,6 +5,7 @@ from tqdm import tqdm
 import math
 from src.utils import MetricsLogger, group_images
 import matplotlib.pyplot as plt
+import time
 
 
 def loss_terms_to_str(loss_items):
@@ -15,13 +16,15 @@ def loss_terms_to_str(loss_items):
     return result
 
 
-def evaluate(G, fid_metrics, stats_logger, batch_size, test_noise, device, c_out_hist):
+def evaluate(G, classifier, fid_metrics, stats_logger, batch_size, test_noise, device, c_out_hist):
     # Compute evaluation metrics on fixed noise (Z) set
     training = G.training
     G.eval()
 
     start_idx = 0
     num_batches = math.ceil(test_noise.size(0) / batch_size)
+    boundary_gen = []
+    n_images = -1
 
     for _ in tqdm(range(num_batches), desc="Evaluating"):
         real_size = min(batch_size, test_noise.size(0) - start_idx)
@@ -30,19 +33,43 @@ def evaluate(G, fid_metrics, stats_logger, batch_size, test_noise, device, c_out
 
         with torch.no_grad():
             batch_gen = G(batch_z.to(device))
+            if classifier is not None:
+                pred = classifier(batch_gen)
+                # select only generated images with ACD <= 0.1
+                boundary_gen.append(batch_gen[(pred >= 0.4) & (pred <= 0.6)])
 
         for metric_name, metric in fid_metrics.items():
-            metric.update(batch_gen, (start_idx, real_size))
+            if metric_name != "boundary_fid":
+                metric.update(batch_gen, (start_idx, real_size))
 
         if c_out_hist is not None:
             c_out_hist.update(batch_gen, (start_idx, real_size))
 
         start_idx += batch_z.size(0)
+      
+    finalize_boundary_fid = False 
+    if 'boundary_fid' in fid_metrics:
+        boundary_gen_torch = torch.cat(boundary_gen, dim=0) 
+        n_images = boundary_gen_torch.size(0)
+        # we need at least 2048 images to compute FID
+        if n_images >= 2048:
+            # update the number of images in the FID metric
+            fid_metrics['boundary_fid'].update_shape(n_images)
+            # evaluate in batches
+            num_batches = math.ceil(n_images / batch_size)
+            start_idx = 0
+            for _ in tqdm(range(num_batches), desc="Evaluating boundary images"):
+                real_size = min(batch_size, n_images - start_idx)
+                batch_b = boundary_gen_torch[start_idx:start_idx + real_size]
+                fid_metrics['boundary_fid'].update(batch_b, (start_idx, real_size))
+                start_idx += batch_b.size(0)
+            finalize_boundary_fid = True
 
     for metric_name, metric in fid_metrics.items():
-        result = metric.finalize()
-        stats_logger.update_epoch_metric(metric_name, result, prnt=True)
-        metric.reset()
+        if (metric_name != "boundary_fid") | (finalize_boundary_fid and (metric_name == "boundary_fid")):
+            result = metric.finalize()
+            stats_logger.update_epoch_metric(metric_name, result, prnt=True)
+            metric.reset()
 
     if c_out_hist is not None:
         c_out_hist.plot()
@@ -53,6 +80,7 @@ def evaluate(G, fid_metrics, stats_logger, batch_size, test_noise, device, c_out
     if training:
         G.train()
 
+    return n_images
 
 def train_disc(G, D, d_opt, d_crit, real_data,
                batch_size, train_metrics, device):
@@ -131,6 +159,7 @@ def train(config, dataset, device, n_epochs, batch_size, G, g_opt, g_updater, D,
             pre_early_stop_key, pre_early_stop_crit = start_early_stop_when
             early_stop_state = 0
 
+    train_metrics.add('time')
     train_metrics.add('G_loss', iteration_metric=True)
     train_metrics.add('D_loss', iteration_metric=True)
 
@@ -142,6 +171,8 @@ def train(config, dataset, device, n_epochs, batch_size, G, g_opt, g_updater, D,
 
     for metric_name in fid_metrics.keys():
         eval_metrics.add(metric_name)
+   
+    eval_metrics.add('boundary_size')
 
     eval_metrics.add_media_metric('samples')
     eval_metrics.add_media_metric('histogram')
@@ -168,6 +199,7 @@ def train(config, dataset, device, n_epochs, batch_size, G, g_opt, g_updater, D,
 
     print("Training...")
     for epoch in range(1, n_epochs+1):
+        start = time.time()
         data_iter = iter(dataloader)
         curr_g_iter = 0
 
@@ -199,6 +231,8 @@ def train(config, dataset, device, n_epochs, batch_size, G, g_opt, g_updater, D,
                     print('[%d/%d][%d/%d]\tG loss: %.4f %s; D loss: %.4f %s'
                           % (epoch, n_epochs, curr_g_iter, g_iters_per_epoch, g_loss.item(), loss_terms_to_str(g_loss_terms), d_loss.item(),
                              loss_terms_to_str(d_loss_terms)))
+        end = time.time()
+        train_metrics.update_epoch_metric('time', end-start)
 
         ###
         # Sample images
@@ -219,9 +253,10 @@ def train(config, dataset, device, n_epochs, batch_size, G, g_opt, g_updater, D,
 
         train_metrics.finalize_epoch()
 
-        evaluate(G, fid_metrics, eval_metrics, batch_size,
+        boundary_size = evaluate(G, classifier, fid_metrics, eval_metrics, batch_size,
                  test_noise, device, c_out_hist)
 
+        eval_metrics.update_epoch_metric('boundary_size', boundary_size)
         eval_metrics.finalize_epoch()
 
         ###
