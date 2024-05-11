@@ -6,11 +6,16 @@ def weights_init(m):
     classname = m.__class__.__name__
     if classname.find('Same') != -1:
         nn.init.normal_(m.conv_t_2d.weight.data, 0.0, 0.02)
+        if m.conv_t_2d.bias is not None:
+            nn.init.constant_(m.conv_t_2d.bias, 0)
     elif classname.find('Conv') != -1:
         nn.init.normal_(m.weight.data, 0.0, 0.02)
+        if m.bias is not None:
+            nn.init.constant_(m.bias, 0)
     elif classname.find('BatchNorm') != -1:
         nn.init.normal_(m.weight.data, 1.0, 0.02)
-        nn.init.constant_(m.bias.data, 0)
+        if m.bias is not None:
+            nn.init.constant_(m.bias, 0)
 
 
 def conv_out_size_same(size, stride):
@@ -74,7 +79,7 @@ class Generator(nn.Module):
                         filter_dim, n_channels,
                         (cur_s_h_smaller, cur_s_w_smaller),
                         (cur_s_h, cur_s_w),
-                        5, 2, bias=False),
+                        4, 2, bias=True),
                     nn.Tanh(),
                 )
             else:
@@ -86,7 +91,7 @@ class Generator(nn.Module):
                         in_channels, out_channels,
                         (cur_s_h_smaller, cur_s_w_smaller),
                         (cur_s_h, cur_s_w),
-                        5, 2, bias=False),
+                        4, 2, bias=False),
                     nn.BatchNorm2d(out_channels),
                     nn.ReLU(True),
                 )
@@ -102,8 +107,8 @@ class Generator(nn.Module):
             filter_dim * (2 ** (n_blocks - 1)), cur_s_h, cur_s_w)
 
         self.project = nn.Sequential(
-            nn.Linear(z_dim, project_out_dim, bias=False),
-            nn.BatchNorm1d(project_out_dim),
+            nn.ConvTranspose2d(self.z_dim, self.project_out_reshape_dim[0], (cur_s_h, cur_s_w), 1, 0, bias=False),
+            nn.BatchNorm2d(self.project_out_reshape_dim[0]),
             nn.ReLU(True),
         )
 
@@ -117,7 +122,7 @@ class Generator(nn.Module):
         """
         z: input (batch_size, z_dim)
         """
-        z = self.project(z)
+        z = self.project(z.view(-1, self.z_dim, 1, 1))
         z = self.conv_blocks(z.view(-1, *self.project_out_reshape_dim))
 
         return z
@@ -142,13 +147,13 @@ class Discriminator(nn.Module):
             if i == 0:
                 in_channels = n_channels
                 block = nn.Sequential(
-                    nn.Conv2d(in_channels, out_channels, 5, 2, 2, bias=False),
+                    nn.Conv2d(in_channels, out_channels, 4, 2, 1, bias=True),
                     nn.LeakyReLU(0.2, inplace=True)
                 )
             else:
                 in_channels = filter_dim * 2 ** (i - 1)
                 block = nn.Sequential(
-                    nn.Conv2d(in_channels, out_channels, 5, 2, 2, bias=False),
+                    nn.Conv2d(in_channels, out_channels, 4, 2, 1, bias=False),
                     nn.BatchNorm2d(
                         out_channels) if use_batch_norm else nn.LayerNorm([out_channels, cur_s_h, cur_s_w]),
                     nn.LeakyReLU(0.2, inplace=True)
@@ -158,8 +163,8 @@ class Discriminator(nn.Module):
 
         self.predict = nn.Sequential(
             # (b, ndf * 2, 7, 7)
+            nn.Conv2d(filter_dim * 2 ** (n_blocks - 1), 1, (cur_s_h, cur_s_w), 1, 1, bias=False),
             nn.Flatten(),
-            nn.Linear(filter_dim * 2 ** (n_blocks - 1) * cur_s_h * cur_s_w, 1),
             # (b, 1)
         )
 
