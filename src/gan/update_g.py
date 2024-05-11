@@ -2,8 +2,8 @@ import torch.autograd as autograd
 from src.utils.min_norm_solvers import MinNormSolver
 import numpy as np
 from torch.nn.utils import clip_grad_norm_ 
-from torch.nn import GaussianNLLLoss, KLDivLoss
-from torch import full_like, hstack
+from torch.nn import GaussianNLLLoss, KLDivLoss, BCELoss
+from torch import full_like, hstack, log
 
 
 class UpdateGenerator:
@@ -186,8 +186,10 @@ class UpdateGeneratorGASTEN_KLDiv(UpdateGenerator):
         super().__init__(crit)
         self.C = C
         self.alpha = alpha
-        self.c_loss = KLDivLoss(reduction="batchmean")
+        self.c_loss = KLDivLoss(reduction="none")
         self.target = 0.5
+        self.eps = 1e-9
+        self.crit = BCELoss(reduction="none")
             
     def __call__(self, G, D, optim, noise, device):
         G.zero_grad()
@@ -198,26 +200,18 @@ class UpdateGeneratorGASTEN_KLDiv(UpdateGenerator):
         # update from ensemble
         loss_1 = 0
         for c_pred in clf_output[0].T:
-            class_prob = hstack((c_pred, 1.0-c_pred))
+            class_prob = hstack((c_pred.unsqueeze(-1), 1.0-c_pred.unsqueeze(-1)))
             target = full_like(input=class_prob, fill_value=self.target, device=device)
-            #var = full_like(input=c_pred, fill_value=self.var, device=device)
-            loss_1 += self.c_loss(class_prob.log(), target)
-            
-        loss_1.backward()
-        clip_grad_norm_(G.parameters(), 0.50 * self.alpha)
-        optim.step()
+            loss_1 += self.c_loss(log(class_prob.clip(self.eps, 1.0)), target)
         # update from discriminator
-        optim.zero_grad()
-        fake_data = G(noise)
         output = D(fake_data)
-        loss_2 = self.crit(device, output)
-        loss_2.backward()
-        clip_grad_norm_(G.parameters(), 0.50)
+        target = full_like(input=output, fill_value=1.0, device=device)
+        loss_2 = self.crit(output, target)
+        loss = (self.alpha * loss_1.sum() + loss_2.sum())
+        loss.backward()
         optim.step()
 
-        loss = loss_1 + loss_2
-
-        return loss, {'original_g_loss': loss_2.item(), 'conf_dist_loss': loss_1.item()}
+        return loss, {'original_g_loss': loss_2.sum().item(), 'conf_dist_loss': loss_1.sum().item()}
 
     def get_loss_terms(self):
         return ['original_g_loss', 'conf_dist_loss']
