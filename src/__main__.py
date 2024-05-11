@@ -45,6 +45,8 @@ def train_modified_gan(config, dataset, cp_dir, gan_path, test_noise,
     weight_txt = weight
     if isinstance(weight, dict) and "gaussian" in weight:
         weight_txt = 'gauss_' + '_'.join([f'{key}_{value}' for key, value in weight['gaussian'].items()])
+    elif isinstance(weight, dict) and "kldiv" in weight:
+        weight_txt = 'kldiv_' + '_'.join([f'{key}_{value}' for key, value in weight['kldiv'].items()])
 
     run_name = '{}_{}_{}'.format(C_name, weight_txt, s1_epoch)
 
