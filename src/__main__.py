@@ -10,7 +10,7 @@ import wandb
 from src.metrics import fid, LossSecondTerm, Hubris
 from src.datasets import load_dataset
 from src.gan.train import train
-from src.gan.update_g import UpdateGeneratorGAN, UpdateGeneratorGASTEN, UpdateGeneratorGASTEN_MGDA, UpdateGeneratorGASTEN_gaussian, UpdateGeneratorGASTEN_KLDiv
+from src.gan.update_g import UpdateGeneratorGAN, UpdateGeneratorGASTEN, UpdateGeneratorGASTEN_MGDA, UpdateGeneratorGASTEN_gaussian, UpdateGeneratorGASTEN_KLDiv, UpdateGeneratorGASTEN_gaussianV2
 from src.metrics.c_output_hist import OutputsHistogram
 from src.utils import load_z, set_seed, setup_reprod, create_checkpoint_path, gen_seed, seed_worker
 from src.utils.plot import plot_metrics
@@ -47,6 +47,8 @@ def train_modified_gan(config, dataset, cp_dir, gan_path, test_noise,
         weight_txt = 'gauss_' + '_'.join([f'{key}_{value}' for key, value in weight['gaussian'].items()])
     elif isinstance(weight, dict) and "kldiv" in weight:
         weight_txt = 'kldiv_' + '_'.join([f'{key}_{value}' for key, value in weight['kldiv'].items()])
+    elif isinstance(weight, dict) and "gaussian-v2" in weight:
+        weight_txt = 'gauss_v2_' + '_'.join([f'{key}_{value}' for key, value in weight['gaussian-v2'].items()])
 
     run_name = '{}_{}_{}'.format(C_name, weight_txt, s1_epoch)
 
@@ -72,6 +74,10 @@ def train_modified_gan(config, dataset, cp_dir, gan_path, test_noise,
         elif isinstance(weight, dict) and "kldiv" in weight:
             alpha = weight["kldiv"]["alpha"]
             g_updater = UpdateGeneratorGASTEN_KLDiv(g_crit, C, alpha=alpha)
+        elif isinstance(weight, dict) and "gaussian-v2" in weight:
+            alpha = weight["gaussian-v2"]["alpha"]
+            var = weight["gaussian-v2"]["var"]
+            g_updater = UpdateGeneratorGASTEN_gaussianV2(g_crit, C, alpha=alpha, var=var)
         elif weight == "mgda":
             g_updater = UpdateGeneratorGASTEN_MGDA(g_crit, C, normalize=False)
         elif weight == "mgda:norm":
