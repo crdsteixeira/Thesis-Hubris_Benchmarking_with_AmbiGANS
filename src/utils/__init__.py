@@ -211,7 +211,7 @@ def begin_ensemble(iterator, clf_type, l_epochs, args):
                                    "--neg", neg_class,
                                    "--classifier-type", clf_type,
                                    "--nf", str(cnn_nfs),
-                                   "--name", str("{}_{}".format(clf_type.replace(':', '_'), args.seed)),
+                                   "--name", str("{}_{}_{}".format(clf_type.replace(':', '_'), args.seed, epochs)),
                                    "--epochs", epochs,
                                    "--batch-size", str(args.batch_size),
                                    "--lr", str(args.lr),
