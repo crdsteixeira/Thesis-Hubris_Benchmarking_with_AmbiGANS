@@ -353,6 +353,7 @@ def main():
                          'hubris': eval_metrics.stats['hubris'],
                          's1_epochs': [epoch]*len(eval_metrics.stats['fid']),
                          'weight': [weight]*len(eval_metrics.stats['fid']),
+                         'classifier': [c_path]*len(eval_metrics.stats['fid']),
                          'epoch': [i+1 for i in range(len(eval_metrics.stats['fid']))]}))
 
             step2_metrics = pd.concat(step2_metrics)
