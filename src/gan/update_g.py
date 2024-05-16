@@ -3,7 +3,7 @@ from src.utils.min_norm_solvers import MinNormSolver
 import numpy as np
 from torch.nn.utils import clip_grad_norm_ 
 from torch.nn import GaussianNLLLoss, KLDivLoss, BCELoss
-from torch import full_like, hstack, log
+from torch import full_like, hstack, log, randn_like
 
 
 class UpdateGenerator:
@@ -207,7 +207,7 @@ class UpdateGeneratorGASTEN_KLDiv(UpdateGenerator):
         output = D(fake_data)
         target = full_like(input=output, fill_value=1.0, device=device)
         loss_2 = self.crit(output, target)
-        loss = (self.alpha * loss_1.sum() + loss_2.sum())
+        loss = hstack((self.alpha * loss_1, loss_2.unsqueeze(-1))).sum()
         loss.backward()
         optim.step()
 
@@ -242,7 +242,7 @@ class UpdateGeneratorGASTEN_gaussianV2(UpdateGenerator):
         output = D(fake_data)
         target = full_like(input=output, fill_value=1.0, device=device)
         loss_2 = self.crit(output, target)
-        loss = (self.alpha * loss_1.sum() + loss_2.sum())
+        loss = hstack((self.alpha * loss_1, loss_2)).sum()
         loss.backward()
         optim.step()
 
