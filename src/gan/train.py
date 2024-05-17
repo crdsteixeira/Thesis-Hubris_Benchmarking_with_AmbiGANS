@@ -47,7 +47,6 @@ def evaluate(G, classifier, fid_metrics, stats_logger, batch_size, test_noise, d
 
         start_idx += batch_z.size(0)
       
-    finalize_boundary_fid = False 
     if 'boundary_fid' in fid_metrics:
         boundary_gen_torch = torch.cat(boundary_gen, dim=0) 
         n_images = boundary_gen_torch.size(0)
@@ -63,13 +62,11 @@ def evaluate(G, classifier, fid_metrics, stats_logger, batch_size, test_noise, d
                 batch_b = boundary_gen_torch[start_idx:start_idx + real_size]
                 fid_metrics['boundary_fid'].update(batch_b, (start_idx, real_size))
                 start_idx += batch_b.size(0)
-            finalize_boundary_fid = True
 
     for metric_name, metric in fid_metrics.items():
-        if (metric_name != "boundary_fid") | (finalize_boundary_fid and (metric_name == "boundary_fid")):
-            result = metric.finalize()
-            stats_logger.update_epoch_metric(metric_name, result, prnt=True)
-            metric.reset()
+        result = metric.finalize()
+        stats_logger.update_epoch_metric(metric_name, result, prnt=True)
+        metric.reset()
 
     if c_out_hist is not None:
         c_out_hist.plot()
@@ -171,27 +168,25 @@ def train(config, dataset, device, n_epochs, batch_size, G, g_opt, g_updater, D,
 
     for metric_name in fid_metrics.keys():
         eval_metrics.add(metric_name)
-   
+
     eval_metrics.add('boundary_size')
-
     eval_metrics.add_media_metric('samples')
-    eval_metrics.add_media_metric('histogram')
+    #eval_metrics.add_media_metric('histogram')
 
-    with torch.no_grad():
-        G.eval()
-        fake = G(fixed_noise).detach().cpu()
-        G.train()
-
-    latest_cp = checkpoint_gan(
-        G, D, g_opt, d_opt, {}, {}, config, epoch=0, output_dir=checkpoint_dir)
-    best_cp = latest_cp
-
-    img = group_images(fake, classifier=classifier, device=device)
-    checkpoint_image(img, 0, output_dir=checkpoint_dir)
+    # we dont need these initial checkpoints
+    #with torch.no_grad():
+    #    G.eval()
+    #    fake = G(fixed_noise).detach().cpu()
+    #    G.train()
+    #latest_cp = checkpoint_gan(
+    #    G, D, g_opt, d_opt, {}, {}, config, epoch=0, output_dir=checkpoint_dir)
+    #best_cp = latest_cp
+    #img = group_images(fake, classifier=classifier, device=device)
+    #checkpoint_image(img, 0, output_dir=checkpoint_dir)
 
     G.train()
     D.train()
-
+    
     g_iters_per_epoch = int(math.floor(len(dataloader) / n_disc_iters))
     iters_per_epoch = g_iters_per_epoch * n_disc_iters
 
@@ -242,8 +237,9 @@ def train(config, dataset, device, n_epochs, batch_size, G, g_opt, g_updater, D,
             fake = G(fixed_noise).detach().cpu()
             G.train()
 
+        # save only on wandb to save space
         img = group_images(fake, classifier=classifier, device=device)
-        checkpoint_image(img, epoch, output_dir=checkpoint_dir)
+        #checkpoint_image(img, epoch, output_dir=checkpoint_dir)
         eval_metrics.log_image('samples', img)
 
         ###

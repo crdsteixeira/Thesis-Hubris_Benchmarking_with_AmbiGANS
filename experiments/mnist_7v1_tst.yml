@@ -1,9 +1,9 @@
 project: gasten_20240501
-name: mnist-7v1
+name: mnist-7v1-tst
 out-dir: out
 data-dir: data
-test-noise: data/z/z_8192_64
-fixed-noise: 8192
+test-noise: data/z/z_4000_64
+fixed-noise: 4000
 
 device: cuda:0
 num-workers: 2
@@ -29,7 +29,6 @@ model:
   loss:
     name: ns
 
-
 optimizer:
   lr: 0.0002
   beta1: 0.5
@@ -37,22 +36,21 @@ optimizer:
 
 train:
   step-1: 
-    epochs: 1
-    checkpoint-every: 1
+    epochs: 5
+    checkpoint-every: 5
     disc-iters: 1
     batch-size: 64
   
   step-2:
-    epochs: 1
+    epochs: 20
     checkpoint-every: 10
     step-1-epochs:
-      - 1
+      - 5
     batch-size: 64
     disc-iters: 1
     classifier:
-      - models/mnist.7v1/cnn-2-1.3333
+      - models/mnist.7v1/cnn-4-1.3333
     weight:
-      - 25
       - gaussian:
-          alpha: 1.08
-          var: 0.05
+          alpha: 0.2
+          var: 0.1

@@ -3,7 +3,7 @@ import argparse
 import numpy as np
 from dotenv import load_dotenv
 import pandas as pd
-
+import json
 import torch
 import wandb
 from wandb import AlertLevel
@@ -138,9 +138,8 @@ def compute_pareto_efficiency(data):
             is_efficient[is_efficient] = np.any(
                 costs[is_efficient] < c, axis=1)
             is_efficient[i] = True
-    return is_efficient 
+    return is_efficient
 
-import json 
 
 def main():
     load_dotenv()
@@ -346,10 +345,10 @@ def main():
 
                     n_epochs = len(eval_metrics.stats['fid'])
                     exp_metrics = pd.DataFrame(
-                        {'classifier': C_name,
-                         'run_id': run_id,
+                        {'classifier': [C_name]*n_epochs,
+                         'run_id': [run_id]*n_epochs,
                          's1_epochs': [epoch]*n_epochs,
-                         'weight_type': weight_type,
+                         'weight_type': [weight_type]*n_epochs,
                          'weight': [weight_name]*n_epochs,
                          'epoch': [i+1 for i in range(n_epochs)],
                          'fid': eval_metrics.stats['fid'],
@@ -368,13 +367,14 @@ def main():
         wandb.init(project=config["project"],
                group=config["name"],
                entity=os.environ['ENTITY'],
-               job_type=f'run-{i}-summary')
+               job_type=f'{run_id}-summary')
 
-        wandb.log({C_name: wandb.Table(dataframe=pd.concat(step2_metrics))})
+        df = pd.concat(step2_metrics)
+        wandb.log({run_id: wandb.Table(dataframe=df)})
 
-        for (C_name, run_id), metrics in step2_metrics.groupby(['classifier', 'run_id']):
+        for (C_name, run_id), metrics in df.groupby(['classifier', 'run_id']):
             plot_metrics(metrics, cp_dir, f'{C_name}-{run_id}')
-               
+
         wandb.alert(
             title="Finished Job",
             text=f"experiments finished for {pos_class}v{neg_class}",
