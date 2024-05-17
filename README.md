@@ -34,8 +34,8 @@ ENTITY=<wandb entity to track experiments>
 | Step | Description                                                   | command                                                                |
 |------|---------------------------------------------------------------|------------------------------------------------------------------------|
 | 1    | create FID score for all pairs of numbers                     | `python src/gen_pairwise_inception.py`                                   |
-| 1.1  | run for one pair only (e.g. 1vs7)                             | `python -m src.metrics.fid --data data/ --dataset mnist --pos 7 --neg 1` |
-| 2    | create binary classifiers given a pair of numbers (e.g. 1vs7) | `python src/gen_classifiers.py --pos 7 --neg 1 --nf 1,2,4 --epochs 1`    |
+| 1.1  | run for one pair only (e.g. 1vs7)                             | `python -m src.metrics.fid --dataset mnist --pos 7 --neg 1` |
+| 2    | create binary classifiers given a pair of numbers (e.g. 1vs7) | `python src/gen_classifiers.py --pos 7 --neg 1 --nf 1,2,4 --epochs 1 --seed 1234`    |
 | 3    | create test noise                                             | `python src/gen_test_noise.py --nz 2048 --z-dim 64`                      |
 
 ### GASTEN WITH ENSEMBLE CLASSIFIERS

@@ -1,9 +1,9 @@
-project: gasten_20240501
+project: gasten_20240517
 name: mnist-7v1
 out-dir: out
 data-dir: data
 test-noise: data/z/z_4000_64
-fixed-noise: 4000
+fixed-noise: 100
 
 device: cuda:0
 num-workers: 2
@@ -55,20 +55,14 @@ train:
       - models/mnist.7v1/cnn-4-1.3333
     weight:
       - gaussian:
-          alpha: 0
-          var: 0.1
-      - gaussian:
-          alpha: 0.2
-          var: 0.1
-      - gaussian:
           alpha: 0.5
           var: 0.1
       - gaussian:
           alpha: 0.8
           var: 0.1
       - gaussian:
-          alpha: 1
+          alpha: 1.0
           var: 0.1
+      - 20
       - 25
       - 30
-      - 35

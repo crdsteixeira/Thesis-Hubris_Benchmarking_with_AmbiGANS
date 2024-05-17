@@ -34,7 +34,7 @@ class FID(Metric):
         self.cur_idx += pred.shape[0]
 
     def finalize(self):
-        if self.pred_arr.size == 0:
+        if self.cur_idx == 0:
             return self.result
         
         act = self.pred_arr

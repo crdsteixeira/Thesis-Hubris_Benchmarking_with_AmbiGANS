@@ -178,9 +178,9 @@ def train(config, dataset, device, n_epochs, batch_size, G, g_opt, g_updater, D,
     #    G.eval()
     #    fake = G(fixed_noise).detach().cpu()
     #    G.train()
-    #latest_cp = checkpoint_gan(
-    #    G, D, g_opt, d_opt, {}, {}, config, epoch=0, output_dir=checkpoint_dir)
-    #best_cp = latest_cp
+    latest_cp = checkpoint_gan(
+        G, D, g_opt, d_opt, {}, {}, config, epoch=0, output_dir=checkpoint_dir)
+    best_cp = latest_cp
     #img = group_images(fake, classifier=classifier, device=device)
     #checkpoint_image(img, 0, output_dir=checkpoint_dir)
 

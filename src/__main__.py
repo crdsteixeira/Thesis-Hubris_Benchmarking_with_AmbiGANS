@@ -11,7 +11,7 @@ from wandb import AlertLevel
 from src.metrics import fid, LossSecondTerm
 from src.datasets import load_dataset
 from src.gan.train import train
-from src.gan.update_g import UpdateGeneratorGAN, UpdateGeneratorGASTEN, UpdateGeneratorGASTEN_MGDA, UpdateGeneratorGASTEN_gaussian
+from src.gan.update_g import UpdateGeneratorGAN, UpdateGeneratorGASTEN, UpdateGeneratorGASTEN_MGDA, UpdateGeneratorGASTEN_gaussian, UpdateGeneratorGASTEN_gaussianV3
 from src.metrics.c_output_hist import OutputsHistogram
 from src.utils import load_z, set_seed, setup_reprod, create_checkpoint_path, gen_seed, seed_worker
 from src.utils.plot import plot_metrics
@@ -63,6 +63,9 @@ def train_modified_gan(config, dataset, cp_dir, gan_path, test_noise,
             alpha = weight["gaussian"]["alpha"]
             var = weight["gaussian"]["var"]
             g_updater = UpdateGeneratorGASTEN_gaussian(g_crit, C, alpha=alpha, var=var)
+        elif isinstance(weight, dict) and "gaussian_v3" in weight:
+            alpha = weight["gaussian_v3"]["alpha"]
+            g_updater = UpdateGeneratorGASTEN_gaussianV3(g_crit, C, alpha=alpha)
         elif weight == "mgda":
             g_updater = UpdateGeneratorGASTEN_MGDA(g_crit, C, normalize=False)
         elif weight == "mgda:norm":

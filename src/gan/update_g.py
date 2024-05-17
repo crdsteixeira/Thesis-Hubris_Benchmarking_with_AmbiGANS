@@ -2,8 +2,8 @@ import torch.autograd as autograd
 from src.utils.min_norm_solvers import MinNormSolver
 import numpy as np
 from torch.nn.utils import clip_grad_norm_ 
-from torch.nn import GaussianNLLLoss
-from torch import full_like
+from torch.nn import GaussianNLLLoss, BCELoss
+from torch import full_like, hstack
 
 
 class UpdateGenerator:
@@ -151,7 +151,7 @@ class UpdateGeneratorGASTEN_gaussian(UpdateGenerator):
         self.var = var
         self.c_loss = GaussianNLLLoss()
         self.target = 0.5
-            
+
     def __call__(self, G, D, optim, noise, device):
         G.zero_grad()
 
@@ -177,6 +177,83 @@ class UpdateGeneratorGASTEN_gaussian(UpdateGenerator):
         loss = loss_1 + loss_2
 
         return loss, {'original_g_loss': loss_2.item(), 'conf_dist_loss': loss_1.item()}
+
+    def get_loss_terms(self):
+        return ['original_g_loss', 'conf_dist_loss']
+
+class UpdateGeneratorGASTEN_gaussianV3(UpdateGenerator):
+    def __init__(self, crit, C, alpha):
+        super().__init__(crit)
+        self.C = C
+        self.alpha = alpha
+        self.var = 0.1
+        self.c_loss = GaussianNLLLoss(reduction="none")
+        self.target = 0.5
+            
+    def __call__(self, G, D, optim, noise, device):
+        # generator and optimizer start with gradients at zero
+        G.zero_grad()
+        optim.zero_grad()
+        # we generate some fake data
+        fake_data = G(noise)
+        # ask the classifier to classify it
+        clf_output = self.C(fake_data)
+        # and the discriminator to discriminate it
+        output = D(fake_data)
+        
+        # prepare the gaussian loss with target = 0.5 and var = 0.1
+        target = full_like(input=clf_output, fill_value=self.target, device=device)
+        var = full_like(input=clf_output, fill_value=self.var, device=device)
+
+        # compute the gaussian loss -> so that we have a lower loss when the probabilities are close to 0.5
+        loss_1 = self.c_loss(clf_output, target, var)
+    
+        # original loss -> binary cross entropy for discriminator
+        loss_2 = self.crit(device, output)
+
+        loss = hstack((self.alpha * loss_1, loss_2)).sum()
+        loss.backward()
+        clip_grad_norm_(G.parameters(), 1)
+        optim.step()
+
+        return loss, {'original_g_loss': loss_2.sum().item(), 'conf_dist_loss': loss_1.sum().item()}
+
+    def get_loss_terms(self):
+        return ['original_g_loss', 'conf_dist_loss']
+    
+class UpdateGeneratorGASTEN_gaussianV2(UpdateGenerator):
+    def __init__(self, crit, C, alpha, var):
+        super().__init__(crit)
+        self.C = C
+        self.alpha = alpha
+        self.var = var
+        self.c_loss = GaussianNLLLoss(reduction="none")
+        self.target = 0.5
+        self.crit = BCELoss(reduction="none")
+
+    def __call__(self, G, D, optim, noise, device):
+        G.zero_grad()
+
+        optim.zero_grad()
+        fake_data = G(noise)
+        clf_output = self.C(fake_data, output_feature_maps=True)
+        # update from ensemble
+        loss_1 = 0
+        for c_pred in clf_output[0].T:
+            target = full_like(input=c_pred, fill_value=self.target, device=device)
+            var = full_like(input=c_pred, fill_value=self.var, device=device)
+            loss_1 += self.c_loss(c_pred, target, var)
+
+        # update from discriminator
+        output = D(fake_data)
+        target = full_like(input=output, fill_value=1.0, device=device)
+        loss_2 = self.crit(output, target)
+
+        loss = hstack((self.alpha * loss_1, loss_2)).sum()
+        loss.backward()
+        optim.step()
+
+        return loss, {'original_g_loss': loss_2.sum().item(), 'conf_dist_loss': loss_1.sum().item()}
 
     def get_loss_terms(self):
         return ['original_g_loss', 'conf_dist_loss']
