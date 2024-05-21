@@ -368,9 +368,10 @@ def main():
 
         # finish run -> alert and save table
         wandb.init(project=config["project"],
-               group=config["name"],
-               entity=os.environ['ENTITY'],
-               job_type=f'{run_id}-summary')
+                    group=config["name"],
+                    entity=os.environ['ENTITY'],
+                    job_type='summary',
+                    name=run_id)
 
         df = pd.concat(step2_metrics)
         wandb.log({run_id: wandb.Table(dataframe=df)})

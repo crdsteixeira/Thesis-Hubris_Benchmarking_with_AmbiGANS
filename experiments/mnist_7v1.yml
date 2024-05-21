@@ -56,10 +56,13 @@ train:
     weight:
       - gaussian:
           alpha: 0.5
-          var: 0.1
+          var: 0.05
       - gaussian:
           alpha: 0.8
-          var: 0.1
+          var: 0.05
+      - gaussian:
+          alpha: 1.0
+          var: 0.05
       - gaussian:
           alpha: 1.0
           var: 0.1
