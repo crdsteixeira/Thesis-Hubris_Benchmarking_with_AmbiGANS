@@ -71,7 +71,7 @@ config_schema = Schema({
             "batch-size": int,
             "disc-iters": int,
             "classifier": [And(str, os.path.exists)],
-            "weight": [Or({ Optional("gaussian"): { "alpha": float, "var": float }}, { Optional("gaussian_v3"): { "alpha": float}}, int, float, "mgda", "mgda:norm" )]
+            "weight": [Or({ Optional("gaussian"): { "alpha": float, "var": float }}, { Optional("gaussian-v2"): { "alpha": float, "var": float}}, int, float, "mgda", "mgda:norm" )]
         }
     }
 })

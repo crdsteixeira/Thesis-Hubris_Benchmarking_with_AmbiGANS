@@ -1,0 +1,60 @@
+project: gasten_20240517
+name: mnist-5v3-tst-v2
+out-dir: out
+data-dir: data
+test-noise: data/z/z_4000_64
+fixed-noise: 100
+
+device: cuda:0
+num-workers: 2
+
+fid-stats-path: data/fid-stats/stats.inception.mnist.5v3.npz
+
+num-runs: 1
+
+dataset:
+  name: mnist
+  binary:
+    pos: 5
+    neg: 3
+
+model:
+  z_dim: 64
+  architecture:
+    name: dcgan
+    g_filter_dim: 64
+    d_filter_dim: 128
+    g_num_blocks: 2
+    d_num_blocks: 2
+  loss:
+    name: ns
+
+optimizer:
+  lr: 0.0002
+  beta1: 0.5
+  beta2: 0.999
+
+train:
+  step-1: /home/gomes_inesisabel/files/Thesis-Cat_GASTeN/out/gasten_20240517/mnist-5v3-tst-v2/May21T23-34_oetwz6ma/step-1
+  step-2:
+    epochs: 10
+    checkpoint-every: 10
+    step-1-epochs:
+      - 5
+    batch-size: 64
+    disc-iters: 1
+    classifier:
+      - models/mnist.5v3/cnn-2-1.3333
+    weight:
+      - gaussian-v2:
+          alpha: 0.5
+          var: 0.005
+      - gaussian-v2:
+          alpha: 0.8
+          var: 0.005
+      - gaussian-v2:
+          alpha: 0.5
+          var: 0.01
+      - gaussian-v2:
+          alpha: 0.8
+          var: 0.01

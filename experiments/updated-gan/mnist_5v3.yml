@@ -1,5 +1,5 @@
 project: gasten_20240517
-name: mnist-8v0
+name: mnist-5v3-v2
 out-dir: out
 data-dir: data
 test-noise: data/z/z_4000_64
@@ -8,24 +8,24 @@ fixed-noise: 100
 device: cuda:0
 num-workers: 2
 
-fid-stats-path: data/fid-stats/stats.inception.mnist.8v0.npz
+fid-stats-path: data/fid-stats/stats.inception.mnist.5v3.npz
 
 num-runs: 1
 
 dataset:
   name: mnist
   binary:
-    pos: 8
-    neg: 0
+    pos: 5
+    neg: 3
 
 model:
   z_dim: 64
   architecture:
     name: dcgan
     g_filter_dim: 64
-    d_filter_dim: 64
-    g_num_blocks: 3
-    d_num_blocks: 3
+    d_filter_dim: 128
+    g_num_blocks: 2
+    d_num_blocks: 2
   loss:
     name: ns
 
@@ -37,7 +37,7 @@ optimizer:
 train:
   step-1:
     epochs: 10
-    checkpoint-every: 1
+    checkpoint-every: 5
     disc-iters: 1
     batch-size: 64
 
@@ -50,22 +50,25 @@ train:
     batch-size: 64
     disc-iters: 1
     classifier:
-      - models/mnist.8v0/cnn-1-1.3333
-      - models/mnist.8v0/cnn-2-1.3333
-      - models/mnist.8v0/cnn-4-1.3333
+      - models/mnist.5v3/cnn-1-1.3333
+      - models/mnist.5v3/cnn-2-1.3333
+      - models/mnist.5v3/cnn-4-1.3333
     weight:
-      - gaussian:
+      - gaussian-v2:
           alpha: 0.5
-          var: 0.05
-      - gaussian:
+          var: 0.005
+      - gaussian-v2:
           alpha: 0.8
-          var: 0.05
-      - gaussian:
+          var: 0.005
+      - gaussian-v2:
           alpha: 1.0
-          var: 0.05
-      - gaussian:
+          var: 0.005
+      - gaussian-v2:
+          alpha: 0.8
+          var: 0.01
+       - gaussian-v2:
           alpha: 1.0
-          var: 0.1
+          var: 0.01
       - 20
       - 25
       - 30
