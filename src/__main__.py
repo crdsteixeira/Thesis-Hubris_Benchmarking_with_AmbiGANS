@@ -364,8 +364,8 @@ def main():
                          # TODO
                          #'s1_train_time': [np.cumsum(step_1_train_metrics.stats['time'])[epoch-1]]*n_epochs
                          })
-                    exp_metrics_train.to_csv(f"train_{path}/{C_name}_{s1_epoch}_{weight_name}.csv")
-                    
+                    exp_metrics_train.to_csv(f"{path}/train_{C_name}_{s1_epoch}_{weight_name}.csv")
+
                     n_epochs = len(eval_metrics.stats['fid'])
                     exp_metrics_eval = pd.DataFrame(
                         {'classifier': [C_name]*n_epochs,
@@ -381,7 +381,7 @@ def main():
                          })
                     # TODO: temporary, change later
                     #exp_metrics_eval["pareto_efficient"] = compute_pareto_efficiency(exp_metrics)
-                    exp_metrics_eval.to_csv(f"eval_{path}/{C_name}_{s1_epoch}_{weight_name}.csv")
+                    exp_metrics_eval.to_csv(f"{path}/eval_{C_name}_{s1_epoch}_{weight_name}.csv")
                     
                     step2_metrics.append(exp_metrics_train)
 
@@ -395,8 +395,9 @@ def main():
         df = pd.concat(step2_metrics)
         wandb.log({run_id: wandb.Table(dataframe=df)})
 
-        for (C_name, run_id), metrics in df.groupby(['classifier', 'run_id']):
-            plot_metrics(metrics, cp_dir, f'{C_name}-{run_id}')
+        # TODO only when having paretto effiency metrics
+        #for (C_name, run_id), metrics in df.groupby(['classifier', 'run_id']):
+        #    plot_metrics(metrics, cp_dir, f'{C_name}-{run_id}')
 
         wandb.alert(
             title="Finished Job",
