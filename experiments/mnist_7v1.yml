@@ -54,18 +54,24 @@ train:
       - models/mnist.7v1/cnn-2-1.3333
       - models/mnist.7v1/cnn-4-1.3333
     weight:
-      - gaussian:
-          alpha: 0.5
-          var: 0.05
-      - gaussian:
-          alpha: 0.8
-          var: 0.05
-      - gaussian:
-          alpha: 1.0
-          var: 0.05
-      - gaussian:
-          alpha: 1.0
-          var: 0.1
       - 20
       - 25
       - 30
+      - gaussian-v2:
+          alpha: 0.5
+          var: 0.01
+      - gaussian-v2:
+          alpha: 0.8
+          var: 0.01
+      - gaussian-v2:
+          alpha: 1.0
+          var: 0.01
+      - gaussian-v2:
+          alpha: 0.5
+          var: 0.005
+      - gaussian-v2:
+          alpha: 0.8
+          var: 0.005 
+      - gaussian-v2:
+          alpha: 1.0
+          var: 0.005  

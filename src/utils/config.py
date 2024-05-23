@@ -31,7 +31,13 @@ config_schema = Schema({
             "d_filter_dim": int,
             "g_num_blocks": int,
             "d_num_blocks": int,
-        }, {
+        },{
+            "name": "dcgan-2",
+            "g_filter_dim": int,
+            "d_filter_dim": int,
+            "g_num_blocks": int,
+            "d_num_blocks": int,
+        },{
             "name": "resnet",
             "g_filter_dim": int,
             "d_filter_dim": int,

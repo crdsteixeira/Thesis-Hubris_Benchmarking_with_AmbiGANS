@@ -21,7 +21,7 @@ dataset:
 model:
   z_dim: 64
   architecture:
-    name: dcgan
+    name: dcgan-2
     g_filter_dim: 64
     d_filter_dim: 128
     g_num_blocks: 2
@@ -47,7 +47,7 @@ train:
     step-1-epochs:
       - 5
     batch-size: 64
-    disc-iters: 1
+    disc-iters: 5
     classifier:
       - models/mnist.7v1/cnn-2-1.3333
     weight:

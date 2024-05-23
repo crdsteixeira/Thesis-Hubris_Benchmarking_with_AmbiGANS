@@ -21,9 +21,9 @@ dataset:
 model:
   z_dim: 64
   architecture:
-    name: dcgan
+    name: dcgan-2
     g_filter_dim: 64
-    d_filter_dim: 128
+    d_filter_dim: 64
     g_num_blocks: 2
     d_num_blocks: 2
   loss:
@@ -35,17 +35,18 @@ optimizer:
   beta2: 0.999
 
 train:
-  step-1: /home/gomes_inesisabel/files/Thesis-Cat_GASTeN/out/gasten_20240517/mnist-5v3-tst-v2/May21T23-34_oetwz6ma/step-1
+  step-1: /home/gomes_inesisabel/files/Thesis-Cat_GASTeN/out/gasten_20240517/mnist-5v3-tst-v2/May22T23-08_4o9nqd89/step-1
   step-2:
     epochs: 10
     checkpoint-every: 10
     step-1-epochs:
       - 5
     batch-size: 64
-    disc-iters: 1
+    disc-iters: 5
     classifier:
       - models/mnist.5v3/cnn-2-1.3333
     weight:
+      - 30
       - gaussian-v2:
           alpha: 0.5
           var: 0.005

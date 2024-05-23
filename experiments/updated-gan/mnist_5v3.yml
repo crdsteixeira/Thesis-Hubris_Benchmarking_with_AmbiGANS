@@ -21,7 +21,7 @@ dataset:
 model:
   z_dim: 64
   architecture:
-    name: dcgan
+    name: dcgan-2
     g_filter_dim: 64
     d_filter_dim: 128
     g_num_blocks: 2
@@ -48,7 +48,7 @@ train:
       - 5
       - 10
     batch-size: 64
-    disc-iters: 1
+    disc-iters: 5
     classifier:
       - models/mnist.5v3/cnn-1-1.3333
       - models/mnist.5v3/cnn-2-1.3333
@@ -56,19 +56,19 @@ train:
     weight:
       - gaussian-v2:
           alpha: 0.5
-          var: 0.005
-      - gaussian-v2:
-          alpha: 0.8
-          var: 0.005
-      - gaussian-v2:
-          alpha: 1.0
-          var: 0.005
+          var: 0.01
       - gaussian-v2:
           alpha: 0.8
           var: 0.01
-       - gaussian-v2:
+      - gaussian-v2:
           alpha: 1.0
           var: 0.01
-      - 20
-      - 25
-      - 30
+      - gaussian-v2:
+          alpha: 0.5
+          var: 0.005
+      - gaussian-v2:
+          alpha: 0.8
+          var: 0.005 
+      - gaussian-v2:
+          alpha: 1.0
+          var: 0.005 
