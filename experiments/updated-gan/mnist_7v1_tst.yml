@@ -2,7 +2,7 @@ project: gasten_20240517
 name: mnist-7v1-tst-v2
 out-dir: out
 data-dir: data
-test-noise: data/z/z_4000_64
+test-noise: data/z/z_2048_64
 fixed-noise: 100
 
 device: cuda:0
@@ -21,7 +21,7 @@ dataset:
 model:
   z_dim: 64
   architecture:
-    name: dcgan-2
+    name: dcgan-v2
     g_filter_dim: 64
     d_filter_dim: 128
     g_num_blocks: 2
@@ -35,11 +35,11 @@ optimizer:
   beta2: 0.999
 
 train:
-  step-1: 
-    epochs: 5
-    checkpoint-every: 5
-    disc-iters: 1
-    batch-size: 64
+  step-1: /home/gomes_inesisabel/files/Thesis-Cat_GASTeN/out/gasten_20240517/mnist-7v1-tst-v2/May23T16-06_p0i9ajyl/step-1
+    #epochs: 5
+    #checkpoint-every: 5
+    #disc-iters: 1
+    #batch-size: 64
   
   step-2:
     epochs: 10
@@ -55,18 +55,3 @@ train:
       - gaussian-v2:
           alpha: 0.5
           var: 0.01
-      - gaussian-v2:
-          alpha: 0.8
-          var: 0.01
-      - gaussian-v2:
-          alpha: 1.0
-          var: 0.01
-      - gaussian-v2:
-          alpha: 0.5
-          var: 0.005
-      - gaussian-v2:
-          alpha: 0.8
-          var: 0.005
-      - gaussian-v2:
-          alpha: 1.0
-          var: 0.005

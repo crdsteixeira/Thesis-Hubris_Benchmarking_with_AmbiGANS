@@ -15,7 +15,6 @@ def loss_terms_to_str(loss_items):
 
     return result
 
-
 def evaluate(G, classifier, fid_metrics, stats_logger, batch_size, test_noise, device, c_out_hist):
     # Compute evaluation metrics on fixed noise (Z) set
     training = G.training
@@ -23,12 +22,11 @@ def evaluate(G, classifier, fid_metrics, stats_logger, batch_size, test_noise, d
 
     start_idx = 0
     num_batches = math.ceil(test_noise.size(0) / batch_size)
-    boundary_gen = []
-    n_images = -1
+    #boundary_gen = []
+    n_images = 0
 
     for _ in tqdm(range(num_batches), desc="Evaluating"):
         real_size = min(batch_size, test_noise.size(0) - start_idx)
-
         batch_z = test_noise[start_idx:start_idx + real_size]
 
         with torch.no_grad():
@@ -36,37 +34,41 @@ def evaluate(G, classifier, fid_metrics, stats_logger, batch_size, test_noise, d
             if classifier is not None:
                 pred = classifier(batch_gen)
                 # select only generated images with ACD <= 0.1
-                boundary_gen.append(batch_gen[(pred >= 0.4) & (pred <= 0.6)])
+                # boundary_gen.append(batch_gen[(pred >= 0.4) & (pred <= 0.6)])
+                n_images += torch.count_nonzero((pred >= 0.4) & (pred <= 0.6)).item()
 
         for metric_name, metric in fid_metrics.items():
-            if metric_name != "boundary_fid":
-                metric.update(batch_gen, (start_idx, real_size))
+            #if metric_name != "boundary_fid":
+            metric.update(batch_gen, (start_idx, real_size))
 
         if c_out_hist is not None:
             c_out_hist.update(batch_gen, (start_idx, real_size))
 
         start_idx += batch_z.size(0)
       
-    if 'boundary_fid' in fid_metrics:
-        boundary_gen_torch = torch.cat(boundary_gen, dim=0) 
-        n_images = boundary_gen_torch.size(0)
+    #if 'boundary_fid' in fid_metrics:
+       # boundary_gen_torch = torch.cat(boundary_gen, dim=0) 
+        #n_images = boundary_gen_torch.size(0)
         # we need at least 2048 images to compute FID
-        if n_images >= 2048:
+        #if n_images >= 2048:
             # update the number of images in the FID metric
-            fid_metrics['boundary_fid'].update_shape(n_images)
+            #fid_metrics['boundary_fid'].update_shape(n_images)
             # evaluate in batches
-            num_batches = math.ceil(n_images / batch_size)
-            start_idx = 0
-            for _ in tqdm(range(num_batches), desc="Evaluating boundary images"):
-                real_size = min(batch_size, n_images - start_idx)
-                batch_b = boundary_gen_torch[start_idx:start_idx + real_size]
-                fid_metrics['boundary_fid'].update(batch_b, (start_idx, real_size))
-                start_idx += batch_b.size(0)
+            #num_batches = math.ceil(n_images / batch_size)
+            #start_idx = 0
+            #for _ in tqdm(range(num_batches), desc="Evaluating boundary images"):
+                #real_size = min(batch_size, n_images - start_idx)
+                #batch_b = boundary_gen_torch[start_idx:start_idx + real_size]
+                #fid_metrics['boundary_fid'].update(batch_b, (start_idx, real_size))
+                #start_idx += batch_b.size(0)
 
     for metric_name, metric in fid_metrics.items():
         result = metric.finalize()
         stats_logger.update_epoch_metric(metric_name, result, prnt=True)
         metric.reset()
+
+    if stats_logger.has_metric("boundary_size"):
+        stats_logger.update_epoch_metric('boundary_size', n_images)
 
     if c_out_hist is not None:
         c_out_hist.plot()
@@ -76,8 +78,6 @@ def evaluate(G, classifier, fid_metrics, stats_logger, batch_size, test_noise, d
 
     if training:
         G.train()
-
-    return n_images
 
 def train_disc(G, D, d_opt, d_crit, real_data,
                batch_size, train_metrics, device):
@@ -228,6 +228,18 @@ def train(config, dataset, device, n_epochs, batch_size, G, g_opt, g_updater, D,
                              loss_terms_to_str(d_loss_terms)))
         end = time.time()
         train_metrics.update_epoch_metric('time', end-start)
+        # finish training
+        train_metrics.finalize_epoch()
+        train_state['epoch'] += 1
+
+        ###
+        # Evaluate after epoch
+        ###
+        # TODO remove, this is a special case
+        if (epoch == n_epochs) or (epoch % checkpoint_every == 0):
+            evaluate(G, classifier, fid_metrics, eval_metrics, batch_size, test_noise, device, c_out_hist)
+
+        eval_metrics.finalize_epoch()
 
         ###
         # Sample images
@@ -239,26 +251,13 @@ def train(config, dataset, device, n_epochs, batch_size, G, g_opt, g_updater, D,
 
         # save only on wandb to save space
         img = group_images(fake, classifier=classifier, device=device)
-        #checkpoint_image(img, epoch, output_dir=checkpoint_dir)
         eval_metrics.log_image('samples', img)
-
-        ###
-        # Evaluate after epoch
-        ###
-        train_state['epoch'] += 1
-
-        train_metrics.finalize_epoch()
-
-        boundary_size = evaluate(G, classifier, fid_metrics, eval_metrics, batch_size,
-                 test_noise, device, c_out_hist)
-
-        eval_metrics.update_epoch_metric('boundary_size', boundary_size)
-        eval_metrics.finalize_epoch()
+        #checkpoint_image(img, epoch, output_dir=checkpoint_dir)
 
         ###
         # Checkpoint GAN
         ###
-        if epoch == n_epochs or epoch % checkpoint_every == 0:
+        if (epoch == n_epochs) or (epoch % checkpoint_every == 0):
             latest_cp = checkpoint_gan(
                 G, D, g_opt, d_opt, train_state, {"eval": eval_metrics.stats, "train": train_metrics.stats}, config, epoch=epoch, output_dir=checkpoint_dir)
 

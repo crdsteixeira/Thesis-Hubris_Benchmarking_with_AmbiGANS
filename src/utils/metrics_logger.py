@@ -13,6 +13,9 @@ class MetricsLogger:
         self.log_dict = {}
         self.epoch = 1
 
+    def has_metric(self, name):
+        return self.apply_prefix(name) in self.log_dict
+
     def add_media_metric(self, name):
         wandb.define_metric(name, step_metric=self.apply_prefix('epoch'))
         self.log_dict[self.apply_prefix(name)] = None

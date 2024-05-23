@@ -204,6 +204,9 @@ def main():
         cp_dir = create_checkpoint_path(config, run_id)
         with open(os.path.join(cp_dir, 'fixed_noise.npy'), 'wb') as f:
             np.save(f, fixed_noise.cpu().numpy())
+        
+        path = f"{os.environ['FILESDIR']}/metrics/{config['project']}/{config['name']}/{run_id}"
+        os.makedirs(path, exist_ok=True)
 
         #################
         # Set seed
@@ -308,13 +311,13 @@ def main():
             # our_class_fid = fid.FID(get_feature_map_fn, dims, test_noise.size(0), mu, sigma, device=device)
 
             conf_dist = LossSecondTerm(class_cache)
-            boundary_fid = fid.FID(fm_fn, dims, test_noise.size(0), mu, sigma, device=device)
+            #boundary_fid = fid.FID(fm_fn, dims, test_noise.size(0), mu, sigma, device=device)
 
             fid_metrics = {
                 'fid': original_fid,
                 # 'focd': our_class_fid,
+                #'boundary_fid': boundary_fid,
                 'conf_dist': conf_dist,
-                'boundary_fid': boundary_fid
             }
 
             c_out_hist = OutputsHistogram(class_cache, test_noise.size(0))
@@ -347,8 +350,24 @@ def main():
                         weight_type = "original"
                         weight_name = str(weight)
 
+                    n_epochs = len(train_metrics.stats['G_loss'])
+                    exp_metrics_train = pd.DataFrame(
+                        {'classifier': [C_name]*n_epochs,
+                         'run_id': [run_id]*n_epochs,
+                         's1_epochs': [epoch]*n_epochs,
+                         'weight_type': [weight_type]*n_epochs,
+                         'weight': [weight_name]*n_epochs,
+                         'epoch': [i+1 for i in range(n_epochs)],
+                         's2_g_loss': train_metrics.stats['G_loss'],
+                         's2_d_loss': train_metrics.stats['D_loss'],
+                         's2_train_time': np.cumsum(train_metrics.stats['time']),
+                         # TODO
+                         #'s1_train_time': [np.cumsum(step_1_train_metrics.stats['time'])[epoch-1]]*n_epochs
+                         })
+                    exp_metrics_train.to_csv(f"train_{path}/{C_name}_{s1_epoch}_{weight_name}.csv")
+                    
                     n_epochs = len(eval_metrics.stats['fid'])
-                    exp_metrics = pd.DataFrame(
+                    exp_metrics_eval = pd.DataFrame(
                         {'classifier': [C_name]*n_epochs,
                          'run_id': [run_id]*n_epochs,
                          's1_epochs': [epoch]*n_epochs,
@@ -357,15 +376,14 @@ def main():
                          'epoch': [i+1 for i in range(n_epochs)],
                          'fid': eval_metrics.stats['fid'],
                          'conf_dist': eval_metrics.stats['conf_dist'],
-                         'boundary_fid': eval_metrics.stats['boundary_fid'],
+                         #'boundary_fid': eval_metrics.stats['boundary_fid'],
                          'boundary_images': eval_metrics.stats['boundary_size'],
-                         's2_g_loss': train_metrics.stats['G_loss'],
-                         's2_d_loss': train_metrics.stats['D_loss'],
-                         's2_train_time': np.cumsum(train_metrics.stats['time']),
-                         's1_train_time': [np.cumsum(step_1_train_metrics.stats['time'])[epoch-1]]*n_epochs
                          })
-                    exp_metrics["pareto_efficient"] = compute_pareto_efficiency(exp_metrics)
-                    step2_metrics.append(exp_metrics)
+                    # TODO: temporary, change later
+                    #exp_metrics_eval["pareto_efficient"] = compute_pareto_efficiency(exp_metrics)
+                    exp_metrics_eval.to_csv(f"eval_{path}/{C_name}_{s1_epoch}_{weight_name}.csv")
+                    
+                    step2_metrics.append(exp_metrics_train)
 
         # finish run -> alert and save table
         wandb.init(project=config["project"],

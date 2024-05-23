@@ -1,8 +1,8 @@
-project: gasten_20240517
+project: gasten_20240523
 name: mnist-7v1-v2
 out-dir: out
 data-dir: data
-test-noise: data/z/z_4000_64
+test-noise: data/z/z_2048_64
 fixed-noise: 100
 
 device: cuda:0
@@ -21,7 +21,7 @@ dataset:
 model:
   z_dim: 64
   architecture:
-    name: dcgan-2
+    name: dcgan-v2
     g_filter_dim: 64
     d_filter_dim: 128
     g_num_blocks: 2
