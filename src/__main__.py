@@ -361,8 +361,7 @@ def main():
                          's2_g_loss': train_metrics.stats['G_loss'],
                          's2_d_loss': train_metrics.stats['D_loss'],
                          's2_train_time': np.cumsum(train_metrics.stats['time']),
-                         # TODO
-                         #'s1_train_time': [np.cumsum(step_1_train_metrics.stats['time'])[epoch-1]]*n_epochs
+                         's1_train_time': [np.cumsum(step_1_train_metrics.stats['time'])[epoch-1]]*n_epochs
                          })
                     exp_metrics_train.to_csv(f"{path}/train_{C_name}_{s1_epoch}_{weight_name}.csv")
 

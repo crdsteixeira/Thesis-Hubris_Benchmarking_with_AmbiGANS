@@ -1,9 +1,9 @@
-project: gasten_20230413
+project: gasten_20240523
 name: fashion-3v0
 out-dir: out
 data-dir: data
-test-noise: data/z/z_8192_64
-fixed-noise: 8192
+test-noise: data/z/z_2048_64
+fixed-noise: 100
 
 device: cuda:0
 num-workers: 2
@@ -54,19 +54,24 @@ train:
       - models/fashion-mnist.3v0/cnn-8-3.3333
       - models/fashion-mnist.3v0/cnn-16-3.3333
     weight:
-      - 10
       - 20
       - 25
       - 30
-      - gaussian:
-          alpha: 1.00
-          var: 0.05
-      - gaussian:
-          alpha: 1.02
-          var: 0.05
-      - gaussian:
-          alpha: 1.05
-          var: 0.05
-      - gaussian:
-          alpha: 1.08
-          var: 0.05
+      - gaussian-v2:
+          alpha: 0.5
+          var: 0.01
+      - gaussian-v2:
+          alpha: 0.8
+          var: 0.01
+      - gaussian-v2:
+          alpha: 1.0
+          var: 0.01
+      - gaussian-v2:
+          alpha: 0.5
+          var: 0.005
+      - gaussian-v2:
+          alpha: 0.8
+          var: 0.005 
+      - gaussian-v2:
+          alpha: 1.0
+          var: 0.005

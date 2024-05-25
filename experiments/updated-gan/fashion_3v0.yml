@@ -1,31 +1,31 @@
 project: gasten_20240523
-name: mnist-5v3
+name: fashion-3v0-v2
 out-dir: out
 data-dir: data
-test-noise: data/z/z_10000_64
+test-noise: data/z/z_2048_64
 fixed-noise: 100
 
 device: cuda:0
 num-workers: 2
 
-fid-stats-path: data/fid-stats/stats.inception.mnist.5v3.npz
+fid-stats-path: data/fid-stats/stats.inception.fashion-mnist.3v0.npz
 
-num-runs: 3
+num-runs: 1
 
 dataset:
-  name: mnist
+  name: fashion-mnist
   binary:
-    pos: 5
-    neg: 3
+    pos: 3
+    neg: 0
 
 model:
   z_dim: 64
   architecture:
-    name: dcgan
+    name: dcgan-v2
     g_filter_dim: 64
-    d_filter_dim: 64
-    g_num_blocks: 3
-    d_num_blocks: 3
+    d_filter_dim: 128
+    g_num_blocks: 2
+    d_num_blocks: 2
   loss:
     name: ns
 
@@ -35,7 +35,7 @@ optimizer:
   beta2: 0.999
 
 train:
-  step-1:
+  step-1: 
     epochs: 10
     checkpoint-every: 5
     disc-iters: 1
@@ -48,11 +48,11 @@ train:
       - 5
       - 10
     batch-size: 64
-    disc-iters: 1
+    disc-iters: 5
     classifier:
-      - models/mnist.5v3/cnn-1-1.3333
-      - models/mnist.5v3/cnn-2-1.3333
-      - models/mnist.5v3/cnn-4-1.3333
+      - models/fashion-mnist.3v0/cnn-4-3.3333
+      - models/fashion-mnist.3v0/cnn-8-3.3333
+      - models/fashion-mnist.3v0/cnn-16-3.3333
     weight:
       - 20
       - 25
@@ -74,4 +74,4 @@ train:
           var: 0.005 
       - gaussian-v2:
           alpha: 1.0
-          var: 0.005 
+          var: 0.005

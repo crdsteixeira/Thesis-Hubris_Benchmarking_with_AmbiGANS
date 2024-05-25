@@ -47,7 +47,7 @@ def evaluate(G, classifier, fid_metrics, stats_logger, batch_size, test_noise, d
         start_idx += batch_z.size(0)
       
     #if 'boundary_fid' in fid_metrics:
-       # boundary_gen_torch = torch.cat(boundary_gen, dim=0) 
+        #boundary_gen_torch = torch.cat(boundary_gen, dim=0) 
         #n_images = boundary_gen_torch.size(0)
         # we need at least 2048 images to compute FID
         #if n_images >= 2048:
