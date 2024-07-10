@@ -35,6 +35,8 @@ parser.add_argument('--classifier-type', dest='clf_type',
 parser.add_argument('--nf', type=str, default="2,4,8,16",
                     help='List of possible num features')
 parser.add_argument("--seed", type=int, help='random seed to use in generation', default=None)
+parser.add_argument('--early-acc', dest='early_acc',
+                    type=float, default=1.0, help='Early accuracy criteria')
 
 def main():
     args = parser.parse_args()

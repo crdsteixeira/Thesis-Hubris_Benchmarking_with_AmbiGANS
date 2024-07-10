@@ -32,6 +32,12 @@ config_schema = Schema({
             "g_num_blocks": int,
             "d_num_blocks": int,
         }, {
+            "name": "dcgan-v2",
+            "g_filter_dim": int,
+            "d_filter_dim": int,
+            "g_num_blocks": int,
+            "d_num_blocks": int,
+        }, {
             "name": "resnet",
             "g_filter_dim": int,
             "d_filter_dim": int,
@@ -71,7 +77,15 @@ config_schema = Schema({
             "batch-size": int,
             "disc-iters": int,
             "classifier": [And(str, os.path.exists)],
-            "weight": [Or({ Optional("gaussian"): { "alpha": float, "var": float }}, int, float, "mgda", "mgda:norm" )]
+            "weight": [Or(
+                {"gaussian": {"alpha": float, "var": float}},
+                int,
+                float,
+                "mgda",
+                "mgda:norm",
+                {"kldiv": {"alpha": float}},
+                {"gaussian-v2": {"alpha": float, "var": float}},
+            )]
         }
     }
 })

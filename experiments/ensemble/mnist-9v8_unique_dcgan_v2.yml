@@ -1,0 +1,70 @@
+project: gasten_comparison_v8
+name: mnist-9v8
+out-dir: out
+data-dir: data
+test-noise: data/z/z_2048_64
+fixed-noise: 2048
+
+device: cuda:0
+num-workers: 6
+
+fid-stats-path: data/fid-stats/stats.inception.mnist.9v8.npz
+
+num-runs: 1
+
+dataset:
+  name: mnist
+  binary:
+    pos: 9
+    neg: 8
+
+model:
+  z_dim: 64
+  architecture:
+    name: dcgan-v2
+    g_filter_dim: 64
+    d_filter_dim: 128
+    g_num_blocks: 2
+    d_num_blocks: 2
+  loss:
+    name: ns
+
+optimizer:
+  lr: 0.0002
+  beta1: 0.5
+  beta2: 0.999
+
+train:
+  step-1:
+    epochs: 20
+    checkpoint-every: 5
+    disc-iters: 1
+    batch-size: 64
+
+  step-2:
+    epochs: 40
+    checkpoint-every: 10
+    step-1-epochs:
+      - 20
+    batch-size: 64
+    disc-iters: 5
+    classifier:
+      - models/mnist.9v8/ensemble_cnn_mean_3331_50
+      #- models/mnist.9v8/ensemble_cnn_mean_3331_1
+      #- models/mnist.9v8/ensemble_cnn_mean_3331_100
+    weight:
+      - kldiv:
+          alpha: 0.75
+      - kldiv:
+          alpha: 0.50
+      - kldiv:
+          alpha: 0.25
+      - gaussian-v2:
+          alpha: 0.005
+          var: 0.001
+      - gaussian-v2:
+          alpha: 0.015
+          var: 0.002
+      - gaussian-v2:
+          alpha: 0.030
+          var: 0.005

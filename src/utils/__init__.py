@@ -193,7 +193,7 @@ def begin_ensemble(iterator, clf_type, l_epochs, args):
             cnn_nfs.append(cnn)
     else:
         cnns_count = int(args.nf)
-        cnn = [[np.random.randint(1, high=32) for _ in range(np.random.randint(1, high=4+1))] for _ in range(cnns_count)]
+        cnn = [[np.random.randint(1, high=5+1) for _ in range(np.random.randint(2, high=4+1))] for _ in range(cnns_count)]
         cnn_nfs.extend(cnn)
 
     print(f"\nFinal CNN list: {cnn_nfs}")
@@ -211,13 +211,14 @@ def begin_ensemble(iterator, clf_type, l_epochs, args):
                                    "--neg", neg_class,
                                    "--classifier-type", clf_type,
                                    "--nf", str(cnn_nfs),
-                                   "--name", str("{}_{}".format(clf_type.replace(':', '_'), args.seed)),
+                                   "--name", str("{}_{}_{}".format(clf_type.replace(':', '_'), args.seed, epochs)),
                                    "--epochs", epochs,
                                    "--batch-size", str(args.batch_size),
                                    "--lr", str(args.lr),
-                                   "--seed", str(args.seed)],
+                                   "--seed", str(args.seed),
+                                   "--early-acc", str(args.early_acc)],
                                   capture_output=True)
-            for line in proc.stdout.split(b'\n')[-4:-1]:
+            for line in proc.stdout.split(b'\n'):
                 print(line.decode())
             for line in proc.stderr.split(b'\n'):
                 print(line.decode())

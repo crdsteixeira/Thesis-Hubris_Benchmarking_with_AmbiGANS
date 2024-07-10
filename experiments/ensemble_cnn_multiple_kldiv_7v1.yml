@@ -1,0 +1,59 @@
+project: gasten_v7
+name: mnist-7v1
+out-dir: out
+data-dir: data
+test-noise: data/z/z_2048_64
+fixed-noise: 2048
+
+device: cuda:0
+num-workers: 6
+
+fid-stats-path: data/fid-stats/stats.inception.mnist.7v1.npz
+
+num-runs: 1
+
+dataset:
+  name: mnist
+  binary:
+    pos: 7
+    neg: 1
+
+model:
+  z_dim: 64
+  architecture:
+    name: dcgan
+    g_filter_dim: 64
+    d_filter_dim: 128
+    g_num_blocks: 2
+    d_num_blocks: 2
+  loss:
+    name: ns
+
+optimizer:
+  lr: 0.0002
+  beta1: 0.5
+  beta2: 0.999
+
+train:
+  step-1:
+    epochs: 20
+    checkpoint-every: 5
+    disc-iters: 1
+    batch-size: 64
+
+  step-2:
+    epochs: 100
+    checkpoint-every: 10
+    step-1-epochs:
+      - 20
+    batch-size: 16
+    disc-iters: 5
+    classifier:
+      - models/mnist.7v1/ensemble_cnn_mean_3331
+    weight:
+      - kldiv:
+          alpha: 8.00
+      - kldiv:
+          alpha: 10.00
+      - kldiv:
+          alpha: 12.00

@@ -7,10 +7,10 @@ import pandas as pd
 import torch
 import wandb
 
-from src.metrics import fid, LossSecondTerm
+from src.metrics import fid, LossSecondTerm, Hubris
 from src.datasets import load_dataset
 from src.gan.train import train
-from src.gan.update_g import UpdateGeneratorGAN, UpdateGeneratorGASTEN, UpdateGeneratorGASTEN_MGDA, UpdateGeneratorGASTEN_gaussian
+from src.gan.update_g import UpdateGeneratorGAN, UpdateGeneratorGASTEN, UpdateGeneratorGASTEN_MGDA, UpdateGeneratorGASTEN_gaussian, UpdateGeneratorGASTEN_KLDiv, UpdateGeneratorGASTEN_gaussianV2
 from src.metrics.c_output_hist import OutputsHistogram
 from src.utils import load_z, set_seed, setup_reprod, create_checkpoint_path, gen_seed, seed_worker
 from src.utils.plot import plot_metrics
@@ -41,7 +41,16 @@ def train_modified_gan(config, dataset, cp_dir, gan_path, test_noise,
                        C, C_name, C_params, C_stats, C_args, weight, fixed_noise, num_classes, device, seed, run_id, s1_epoch):
     print("Running experiment with classifier {} and weight {} ...".format(
         C_name, weight))
-    run_name = '{}_{}_{}'.format(C_name, weight, s1_epoch)
+
+    weight_txt = weight
+    if isinstance(weight, dict) and "gaussian" in weight:
+        weight_txt = 'gauss_' + '_'.join([f'{key}_{value}' for key, value in weight['gaussian'].items()])
+    elif isinstance(weight, dict) and "kldiv" in weight:
+        weight_txt = 'kldiv_' + '_'.join([f'{key}_{value}' for key, value in weight['kldiv'].items()])
+    elif isinstance(weight, dict) and "gaussian-v2" in weight:
+        weight_txt = 'gauss_v2_' + '_'.join([f'{key}_{value}' for key, value in weight['gaussian-v2'].items()])
+
+    run_name = '{}_{}_{}'.format(C_name, weight_txt, s1_epoch)
 
     gan_cp_dir = os.path.join(cp_dir, run_name)
 
@@ -62,6 +71,13 @@ def train_modified_gan(config, dataset, cp_dir, gan_path, test_noise,
             alpha = weight["gaussian"]["alpha"]
             var = weight["gaussian"]["var"]
             g_updater = UpdateGeneratorGASTEN_gaussian(g_crit, C, alpha=alpha, var=var)
+        elif isinstance(weight, dict) and "kldiv" in weight:
+            alpha = weight["kldiv"]["alpha"]
+            g_updater = UpdateGeneratorGASTEN_KLDiv(g_crit, C, alpha=alpha)
+        elif isinstance(weight, dict) and "gaussian-v2" in weight:
+            alpha = weight["gaussian-v2"]["alpha"]
+            var = weight["gaussian-v2"]["var"]
+            g_updater = UpdateGeneratorGASTEN_gaussianV2(g_crit, C, alpha=alpha, var=var)
         elif weight == "mgda":
             g_updater = UpdateGeneratorGASTEN_MGDA(g_crit, C, normalize=False)
         elif weight == "mgda:norm":
@@ -91,7 +107,7 @@ def train_modified_gan(config, dataset, cp_dir, gan_path, test_noise,
                config={
         'id': run_id,
         'seed': seed,
-        'weight': weight,
+        'weight': weight_txt,
         'train': config["train"]["step-2"],
         'classifier_loss': C_stats['test_loss'],
         'classifier': C_name,
@@ -301,6 +317,7 @@ def main():
                 'fid': original_fid,
                 'focd': our_class_fid,
                 'conf_dist': conf_dist,
+                'hubris': Hubris(class_cache, test_noise.size(0)),
             }
 
             c_out_hist = OutputsHistogram(class_cache, test_noise.size(0))
@@ -333,8 +350,10 @@ def main():
                     step2_metrics.append(pd.DataFrame(
                         {'fid': eval_metrics.stats['fid'],
                          'conf_dist': eval_metrics.stats['conf_dist'],
+                         'hubris': eval_metrics.stats['hubris'],
                          's1_epochs': [epoch]*len(eval_metrics.stats['fid']),
                          'weight': [weight]*len(eval_metrics.stats['fid']),
+                         'classifier': [c_path]*len(eval_metrics.stats['fid']),
                          'epoch': [i+1 for i in range(len(eval_metrics.stats['fid']))]}))
 
             step2_metrics = pd.concat(step2_metrics)

@@ -22,6 +22,7 @@ def evaluate(C, device, dataloader, criterion, acc_fun, verbose=True, desc='Vali
     C.eval()
     running_loss = 0.0
     running_accuracy = 0.0
+    per_C_accuracy = []
 
     seq = tqdm(dataloader, desc=desc) if verbose else dataloader
 
@@ -34,11 +35,30 @@ def evaluate(C, device, dataloader, criterion, acc_fun, verbose=True, desc='Vali
         y = y.to(device)
 
         with torch.no_grad():
-            y_hat = C(X)
-        loss = criterion(y_hat, y)
+            accuracies = []
+            if C.m_val:
+                for m in C.models:
+                    y_hat = m(X, output_feature_maps=False)
+                    loss = criterion(y_hat, y)
+                    running_accuracy += acc_fun(y_hat, y, avg=False)
+                    running_loss += loss.item() * X.shape[0] 
+                    accuracies.append(acc_fun(y_hat, y, avg=True))
+                                           
+            else: 
+                y_total = C(X, output_feature_maps=True)
+                y_hat = y_total[-1]
+                y_c_hat = y_total[0]
 
-        running_accuracy += acc_fun(y_hat, y, avg=False)
-        running_loss += loss.item() * X.shape[0]
+                loss = criterion(y_hat, y)
+
+                running_accuracy += acc_fun(y_hat, y, avg=False)
+                running_loss += loss.item() * X.shape[0]
+
+                
+                for j in range(y_c_hat.size(-1)):
+                    accuracies.append(acc_fun(y_c_hat[:, j], y, avg=True))
+    
+        per_C_accuracy.append(accuracies)
 
     acc = running_accuracy / len(dataloader.dataset)
     loss = running_loss / len(dataloader.dataset)
@@ -46,8 +66,18 @@ def evaluate(C, device, dataloader, criterion, acc_fun, verbose=True, desc='Vali
     if training:
         C.train()
 
+    per_C_accuracy = np.array(per_C_accuracy)
+    print("per classifier accuracy: ", np.mean(per_C_accuracy, axis=0))
     return acc.item(), loss
 
+def default_train_fn(C, X, Y, crit, acc_fun, early_acc=1.0):
+    y_hat = C(X)
+    loss = crit(y_hat, Y)
+    acc = acc_fun(y_hat, Y, avg=False)
+    if early_acc > (acc / len(Y)):
+        loss.backward()
+
+    return loss, acc
 
 def train(C, opt, crit, train_loader, val_loader, test_loader, acc_fun, args, name, model_params, device):
     stats = {
@@ -62,71 +92,78 @@ def train(C, opt, crit, train_loader, val_loader, test_loader, acc_fun, args, na
     }
 
     C.train()
+    for stage in ['train', 'optimize']:
+        if stage == 'optimize':
+            if C.optimize:
+                C_fn = C.optimize_helper
+            else:
+                break
+        elif stage == 'train':
+            if C.train_models:
+                C_fn = C.train_helper
+            else:
+                C_fn = default_train_fn
 
-    for epoch in range(args.epochs):
-        stats['cur_epoch'] = epoch
+        for epoch in range(args.epochs):
+            stats['cur_epoch'] = epoch
 
-        print("\n --- Epoch {} ---\n".format(epoch + 1), flush=True)
+            print("\n --- {}: Epoch {} ---\n".format(stage, epoch + 1), flush=True)
 
-        ###
-        # Train
-        ###
-        running_accuracy = 0.0
-        running_loss = 0.0
+            ###
+            # Train
+            ###
+            running_accuracy = 0.0
+            running_loss = 0.0
 
-        for i, data in enumerate(tqdm(train_loader, desc='Train'), 0):
-            X, y = data
-            X = X.to(device)
-            y = y.to(device)
+            for i, data in enumerate(tqdm(train_loader, desc='Train'), 0):
+                X, y = data
+                X = X.to(device)
+                y = y.to(device)
 
-            opt.zero_grad()
+                opt.zero_grad()
+                loss, acc = C_fn(C, X, y, crit, acc_fun, args.early_acc)
+                opt.step()
 
-            y_hat = C(X)
-            loss = crit(y_hat, y)
-            loss.backward()
+                running_accuracy += acc
+                running_loss += loss.item() * X.shape[0]
 
-            opt.step()
+            train_loss = running_loss / len(train_loader.dataset)
+            train_acc = running_accuracy / len(train_loader.dataset)
+            stats['train_acc'].append(train_acc.item())
+            stats['train_loss'].append(train_loss)
 
-            running_accuracy += acc_fun(y_hat, y, avg=False)
-            running_loss += loss.item() * X.shape[0]
+            print("{}: Loss: {}".format(stage, train_loss), flush=True)
+            print("{}: Accuracy: {}".format(stage, train_acc), flush=True)
 
-        train_loss = running_loss / len(train_loader.dataset)
-        train_acc = running_accuracy / len(train_loader.dataset)
-        stats['train_acc'].append(train_acc.item())
-        stats['train_loss'].append(train_loss)
+            ###
+            # Validation
+            ###
+            val_acc, val_loss = evaluate(
+                C, device, val_loader, crit, acc_fun, verbose=True)
+            stats['val_acc'].append(val_acc)
+            stats['val_loss'].append(val_loss)
 
-        print("Loss: {}".format(train_loss), flush=True)
-        print("Accuracy: {}".format(train_acc), flush=True)
+            print("{}: Loss: {}".format(stage, val_loss), flush=True)
+            print("{}: Accuracy: {}".format(stage, val_acc), flush=True)
 
-        ###
-        # Validation
-        ###
-        val_acc, val_loss = evaluate(
-            C, device, val_loader, crit, acc_fun, verbose=True)
-        stats['val_acc'].append(val_acc)
-        stats['val_loss'].append(val_loss)
+            if val_loss < stats['best_loss']:
+                stats['best_loss'] = val_loss
+                stats['best_epoch'] = epoch
+                stats['early_stop_tracker'] = 0
 
-        print("Loss: {}".format(val_loss), flush=True)
-        print("Accuracy: {}".format(val_acc), flush=True)
-
-        if val_loss < stats['best_loss']:
-            stats['best_loss'] = val_loss
-            stats['best_epoch'] = epoch
-            stats['early_stop_tracker'] = 0
-
-            cp_path = checkpoint(C, name, model_params,
-                                 stats, args, output_dir=args.out_dir)
-            print("")
-            print(' > Saved checkpoint to {}'.format(cp_path))
-        else:
-            if args.early_stop is not None:
-                stats['early_stop_tracker'] += 1
+                cp_path = checkpoint(C, name, model_params,
+                                    stats, args, output_dir=args.out_dir)
                 print("")
-                print(" > Early stop counter: {}/{}".format(
-                    stats['early_stop_tracker'], args.early_stop))
+                print(' > Saved checkpoint to {}'.format(cp_path))
+            else:
+                if args.early_stop is not None:
+                    stats['early_stop_tracker'] += 1
+                    print("")
+                    print(" > Early stop counter: {}/{}".format(
+                        stats['early_stop_tracker'], args.early_stop))
 
-                if stats['early_stop_tracker'] == args.early_stop:
-                    break
+                    if stats['early_stop_tracker'] == args.early_stop:
+                        break
 
     return stats, cp_path
 
@@ -152,7 +189,9 @@ def parse_args():
     parser.add_argument('--epochs', type=int, default=2,
                         help='Number of epochs to train for')
     parser.add_argument('--early-stop', dest='early_stop',
-                        type=int, default=3, help='Early stopping criteria')
+                        type=int, default=None, help='Early stopping criteria')
+    parser.add_argument('--early-acc', dest='early_acc',
+                        type=float, default=1.0, help='Early accuracy criteria')
     parser.add_argument('--lr', type=float, default=5e-4,
                         help='ADAM opt learning rate')
     parser.add_argument('--nf', type=str, default=2, help='Num features')
@@ -255,8 +294,11 @@ def main():
         with torch.no_grad():
             y_hat = best_C(X.to(device))
 
-        train_y_hat[i:i+y_hat.size(0)] = y_hat
-        i += y_hat.size(0)
+        if C.m_val:
+            pass
+        else:
+            train_y_hat[i:i+y_hat.size(0)] = y_hat
+            i += y_hat.size(0)
 
     test_dataloader = torch.utils.data.DataLoader(
         test_set, batch_size=args.batch_size, shuffle=False)
@@ -267,8 +309,11 @@ def main():
         with torch.no_grad():
             y_hat = best_C(X.to(device))
 
-        test_y_hat[i:i+y_hat.size(0)] = y_hat
-        i += y_hat.size(0)
+        if C.m_val:
+            pass
+        else:
+            test_y_hat[i:i+y_hat.size(0)] = y_hat
+            i += y_hat.size(0)
 
     # cp_path = checkpoint(best_C, name, model_params, stats,
     #                     args, output_dir=args.out_dir)
