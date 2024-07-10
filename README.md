@@ -24,9 +24,7 @@ FILESDIR=<file directory>
 ENTITY=<wandb entity to track experiments>
 ```
 
-### GASTEN ORIGINAL
-
-#### Preparation
+### Preparation
 
 | Step | Description | Command |
 |------|-------------|---------|
