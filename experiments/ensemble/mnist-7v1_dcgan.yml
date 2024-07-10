@@ -1,4 +1,4 @@
-project: gasten_comparison_v7
+project: gasten_comparison_v8
 name: mnist-7v1
 out-dir: out
 data-dir: data
@@ -52,9 +52,9 @@ train:
       - models/mnist.7v1/ensemble_cnn_meta-learner_3331_50
       - models/mnist.7v1/ensemble_cnn_mean_3331_50
       - models/mnist.7v1/ensemble_cnn_linear_3331_50
-      - models/mnist.7v1/ensemble_cnn_meta-learner_3331_1
-      - models/mnist.7v1/ensemble_cnn_mean_3331_1
-      - models/mnist.7v1/ensemble_cnn_linear_3331_1
+      #- models/mnist.7v1/ensemble_cnn_meta-learner_3331_1
+      #- models/mnist.7v1/ensemble_cnn_mean_3331_1
+      #- models/mnist.7v1/ensemble_cnn_linear_3331_1
     weight:
       - gaussian:
           alpha: 1.00

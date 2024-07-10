@@ -1,4 +1,4 @@
-project: gasten_comparison_v7
+project: gasten_comparison_v8
 name: mnist-9v8
 out-dir: out
 data-dir: data
@@ -52,24 +52,24 @@ train:
       - models/mnist.9v8/ensemble_cnn_meta-learner_3331_50
       - models/mnist.9v8/ensemble_cnn_mean_3331_50
       - models/mnist.9v8/ensemble_cnn_linear_3331_50
-      - models/mnist.9v8/ensemble_cnn_meta-learner_3331_1
-      - models/mnist.9v8/ensemble_cnn_mean_3331_1
-      - models/mnist.9v8/ensemble_cnn_linear_3331_1
+      #- models/mnist.9v8/ensemble_cnn_meta-learner_3331_1
+      #- models/mnist.9v8/ensemble_cnn_mean_3331_1
+      #- models/mnist.9v8/ensemble_cnn_linear_3331_1
     weight:
+      #- gaussian:
+      #    alpha: 1.00
+      #    var: 0.01
       - gaussian:
           alpha: 1.00
-          var: 0.001
+          var: 0.02
       - gaussian:
           alpha: 1.00
-          var: 0.005
-      - gaussian:
-          alpha: 1.00
-          var: 0.01
-      - gaussian:
-          alpha: 1.00
-          var: 0.05
-      - 1
-      - 10
-      - 25
-      - 50
-      - mgda
+          var: 0.03
+      #- gaussian:
+      #    alpha: 1.00
+      #    var: 0.05
+      #- 1
+      #- 10
+      #- 25
+      #- 50
+      #- mgda

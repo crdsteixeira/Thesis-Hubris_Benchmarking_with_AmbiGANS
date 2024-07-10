@@ -1,4 +1,4 @@
-project: gasten_comparison_v7
+project: gasten_comparison_v8
 name: mnist-7v1
 out-dir: out
 data-dir: data
@@ -50,7 +50,7 @@ train:
     disc-iters: 5
     classifier:
       - models/mnist.7v1/ensemble_cnn_mean_3331_50
-      - models/mnist.7v1/ensemble_cnn_mean_3331_1
+      #- models/mnist.7v1/ensemble_cnn_mean_3331_1
       #- models/mnist.7v1/ensemble_cnn_mean_3331_100
     weight:
       - kldiv:
