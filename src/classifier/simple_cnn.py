@@ -20,6 +20,7 @@ class Classifier(nn.Module):
         for i in range(len(nf)):
             self.blocks.append(nn.Sequential(
                 nn.Conv2d(n_in, nf[i], 3, padding='same'),
+                nn.ReLU(),
                 nn.MaxPool2d(2),
             ))
 
